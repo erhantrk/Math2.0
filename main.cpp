@@ -2,11 +2,10 @@
 #include "Tokenizer.hpp"
 
 int main() {
-    auto tokenize = Tokenizer::tokenize;
-    auto&& [error, tokens] = tokenize("3 + 5 * (2 - 4)");
+    auto&& [error, tokens] = Tokenizer::tokenize("3 + 5 * (2 - 4)");
     if (tokens.empty()) {
         std::cerr << error << std::endl;
-        return 9;
+        return 1;
     }
     for (const auto& token : tokens) {
         std::cout << token << ", ";

@@ -1,19 +1,18 @@
 #include "Tokenizer.hpp"
-#include <stdexcept>
-
+using Type = Token::Type;
 std::pair<std::string, std::vector<Token>> Tokenizer::tokenize(const std::string& input) {
     std::vector<Token> tokens;
 
-    std::vector<std::pair<std::string, std::string>> token_specification = {
-        {"Number",  R"(\d+(\.\d+)?)"},
-        {"Symbol",  R"([\+\-\*/\^\(\)])"},
-        {"Assign",  R"(=)"},
-        {"Word",    R"([a-zA-Z_]\w*)"},
-        {"Skip",    R"([ \t]+)"},
-        {"Newline", R"(\n)"}
+    std::vector<std::pair<Type, std::string>> token_specification = {
+        {Type::Number,  R"(\d+(\.\d+)?)"},
+        {Type::Symbol,  R"([\+\-\*/\^\(\)])"},
+        {Type::Assign,  R"(=)"},
+        {Type::Word,    R"([a-zA-Z_]\w*)"},
+        {Type::Skip,    R"([ \t]+)"},
+        {Type::Newline, R"(\n)"}
     };
 
-    std::vector<std::pair<std::string, std::regex>> regexes;
+    std::vector<std::pair<Token::Type, std::regex>> regexes;
     regexes.reserve(token_specification.size());
     for (const auto& [name, pattern] : token_specification)
         regexes.emplace_back(name, std::regex(pattern));
@@ -30,9 +29,9 @@ std::pair<std::string, std::vector<Token>> Tokenizer::tokenize(const std::string
 
             if (std::regex_search(remaining, match, re, std::regex_constants::match_continuous)) {
                 std::string value = match.str();
-                if (type == "Newline") {
+                if (type == Type::Newline) {
                     ++line_number;
-                } else if (type != "Skip") {
+                } else if (type != Type::Skip) {
                     tokens.emplace_back(type, value, line_number);
                 }
                 position += value.size();
@@ -60,9 +59,18 @@ std::pair<std::string, std::vector<Token>> Tokenizer::tokenize(const std::string
 }
 
 std::ostream& operator<<(std::ostream& os, const Token& token) {
-    os << "Token(" << token.type << ", " << token.value << ", " << token.line << ")";
+    std::string tokenStr;
+    switch (token.type) {
+        case Type::Number: tokenStr = "Number"; break;
+        case Type::Symbol: tokenStr = "Symbol"; break;
+        case Type::Assign: tokenStr = "Assign"; break;
+        case Type::Word: tokenStr = "Word"; break;
+        case Type::Skip: tokenStr = "Skip"; break;
+        case Type::Newline: tokenStr = "Newline"; break;
+    }
+    os << "Token(" << tokenStr << ", " << token.value << ", " << token.line << ")";
     return os;
 }
 
-Token::Token(const std::string& type, const std::string& value, int line)
+Token::Token(const Type& type, const std::string& value, int line)
     : type(type), value(value), line(line) {}

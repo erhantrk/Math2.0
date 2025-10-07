@@ -10,11 +10,12 @@
 #include <vector>
 
 struct Token {
-    std::string type;
+    enum class Type {Number, Symbol, Assign, Word, Skip, Newline};
+    Type type;
     std::string value;
     int line;
 
-    Token(const std::string& type, const std::string& value, int line);
+    Token(const Type& type, const std::string& value, int line);
 };
 
 std::ostream& operator<<(std::ostream& os, const Token& token);
