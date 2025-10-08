@@ -1,4 +1,6 @@
 #include "Lexer.hpp"
+
+#include <bsm/audit.h>
 using Type = Token::Type;
 
 Lexer::Lexer(const std::string &input) {
@@ -57,15 +59,23 @@ Lexer::Lexer(const std::string &input) {
 }
 
 const Token& Lexer::peek() {
-    if (tokens.size() == 0) return Lexer::Eof;
+    if (tokens.size() == 0) return Eof;
     Token& token = tokens.back();
     return token;
 }
 const Token& Lexer::next() {
-    if (tokens.size() == 0) return Lexer::Eof;
+    if (tokens.size() == 0) return Eof;
     Token& token = tokens.back();
     tokens.pop_back();
     return token;
+}
+
+void Lexer::skip() {
+    tokens.pop_back();
+}
+
+void Lexer::addToken(const Token& token) {
+    tokens.push_back(token);
 }
 
 std::string Lexer::getError() const {

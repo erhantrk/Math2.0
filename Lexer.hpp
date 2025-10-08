@@ -29,4 +29,6 @@ public:
     std::string getError() const;
     const Token&  peek();
     const Token&  next();
+    void skip();
+    void addToken(const Token& token);
 };
