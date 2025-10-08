@@ -45,7 +45,16 @@ std::unique_ptr<Node> Parser::parseExpression(Lexer& lexer, int min_bp){
         if (lexer.peek().type == Token::Type::Symbol && lexer.peek().value[0] == ')') break;
 
         std::unique_ptr<Node> op = nullptr;
-        if (lexer.peek().type == Token::Type::Symbol) op = createNode(lexer.peek());
+        if (lexer.peek().type == Token::Type::Symbol) {
+            if (lexer.peek().value[0] == '(') {
+                Token temp{Token::Type::Symbol, "*", token.line};
+                op = createNode(temp);
+                lexer.addToken(temp);
+            }
+            else {
+                op = createNode(lexer.peek());
+            }
+        }
         else if (lexer.peek().type == Token::Type::Word && token.type == Token::Type::Number) {
             Token temp{Token::Type::Symbol, "*", token.line};
             op = createNode(temp);
