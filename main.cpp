@@ -1,14 +1,19 @@
 #include <iostream>
-#include "Tokenizer.hpp"
 
+#include "Lexer.hpp"
+#include "Lexer.hpp"
+#include "Parser.hpp"
+
+Token::Type fn(Token::Type type) {
+    return type;
+}
 int main() {
-    auto&& [error, tokens] = Tokenizer::tokenize("3 + 5 * (2 - 4)");
-    if (tokens.empty()) {
-        std::cerr << error << std::endl;
+    Lexer lexer("sin 1*5 - 5");
+    if (!lexer.getError().empty()) {
+        std::cerr << lexer.getError() << std::endl;
         return 1;
     }
-    for (const auto& token : tokens) {
-        std::cout << token << ", ";
-    }
+    auto root = Parser::parseExpression(lexer, 0.0f);
     return 0;
 }
+

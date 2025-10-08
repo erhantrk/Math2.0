@@ -10,7 +10,7 @@
 #include <vector>
 
 struct Token {
-    enum class Type {Number, Symbol, Assign, Word, Skip, Newline};
+    enum class Type {Number, Symbol, Word, Skip, Newline, Eof};
     Type type;
     std::string value;
     int line;
@@ -20,7 +20,13 @@ struct Token {
 
 std::ostream& operator<<(std::ostream& os, const Token& token);
 
-class Tokenizer {
+class Lexer {
+    std::string error;
+    std::vector<Token> tokens;
+    static inline Token Eof{Token::Type::Eof, "", 0};
 public:
-    static std::pair<std::string, std::vector<Token>> tokenize(const std::string& input);
+    explicit Lexer(const std::string& input);
+    std::string getError() const;
+    const Token&  peek();
+    const Token&  next();
 };

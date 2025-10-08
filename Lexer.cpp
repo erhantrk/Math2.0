@@ -1,12 +1,10 @@
-#include "Tokenizer.hpp"
+#include "Lexer.hpp"
 using Type = Token::Type;
-std::pair<std::string, std::vector<Token>> Tokenizer::tokenize(const std::string& input) {
-    std::vector<Token> tokens;
 
+Lexer::Lexer(const std::string &input) {
     std::vector<std::pair<Type, std::string>> token_specification = {
         {Type::Number,  R"(\d+(\.\d+)?)"},
-        {Type::Symbol,  R"([\+\-\*/\^\(\)])"},
-        {Type::Assign,  R"(=)"},
+        {Type::Symbol,  R"([!=\+\-\*/\^\(\)])"},
         {Type::Word,    R"([a-zA-Z_]\w*)"},
         {Type::Skip,    R"([ \t]+)"},
         {Type::Newline, R"(\n)"}
@@ -48,25 +46,41 @@ std::pair<std::string, std::vector<Token>> Tokenizer::tokenize(const std::string
 
             std::string caretLine = std::string(errorPrefix.length() + position, ' ') + "^";
 
-            return std::make_pair(
-                errorLine + caretLine,
-                std::vector<Token>{}
-            );
+            error = errorLine + caretLine;
+            tokens = {};
+            return;
         }
     }
 
-    return std::make_pair("", tokens);
+    error = "";
+    tokens = std::vector<Token>{tokens.rbegin(), tokens.rend()};
+}
+
+const Token& Lexer::peek() {
+    if (tokens.size() == 0) return Lexer::Eof;
+    Token& token = tokens.back();
+    return token;
+}
+const Token& Lexer::next() {
+    if (tokens.size() == 0) return Lexer::Eof;
+    Token& token = tokens.back();
+    tokens.pop_back();
+    return token;
+}
+
+std::string Lexer::getError() const {
+    return error;
 }
 
 std::ostream& operator<<(std::ostream& os, const Token& token) {
     std::string tokenStr;
     switch (token.type) {
-        case Type::Number: tokenStr = "Number"; break;
-        case Type::Symbol: tokenStr = "Symbol"; break;
-        case Type::Assign: tokenStr = "Assign"; break;
-        case Type::Word: tokenStr = "Word"; break;
-        case Type::Skip: tokenStr = "Skip"; break;
+        case Type::Number: tokenStr =  "Number"; break;
+        case Type::Symbol: tokenStr =  "Symbol"; break;
+        case Type::Word: tokenStr =    "Word"; break;
+        case Type::Skip: tokenStr =    "Skip"; break;
         case Type::Newline: tokenStr = "Newline"; break;
+        default: ;
     }
     os << "Token(" << tokenStr << ", " << token.value << ", " << token.line << ")";
     return os;
