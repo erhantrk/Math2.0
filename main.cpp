@@ -8,7 +8,7 @@ Token::Type fn(Token::Type type) {
     return type;
 }
 int main() {
-    Lexer lexer("(z * t)(x + y)");
+    Lexer lexer("-+-x");
     if (!lexer.getError().empty()) {
         std::cerr << lexer.getError() << std::endl;
         return 1;

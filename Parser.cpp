@@ -7,17 +7,22 @@
 
 static std::unique_ptr<Node> createNode(const Token& token);
 static bool isTokenPostFix(const Token& token);
-std::pair<int, int> getBindingPower(const Token&  token);
+std::pair<int, int> getBindingPower(const Token&  token, bool isPrefix = false);
+static bool isTokenPreFix(const Token& token);
 
 
 std::unique_ptr<Node> Parser::parseExpression(Lexer& lexer, int min_bp){
     const Token& token = lexer.next();
-    if (token.type != Token::Type::Number && token.type != Token::Type::Word && (token.type != Token::Type::Symbol && token.value[0] == '(')) {
+    const bool isValid = (token.type == Token::Type::Number)
+                      || (token.type == Token::Type::Word)
+                      || (token.type == Token::Type::Symbol && token.value[0] == '(')
+                      || isTokenPreFix(token);
+    if (!isValid) {
         /* Add error here */
         return nullptr;
     }
     std::unique_ptr<Node> lhs = nullptr;
-    if (token.type == Token::Type::Symbol) {
+    if (token.type == Token::Type::Symbol && token.value[0] == '(') {
         lhs = parseExpression(lexer, 0);
         const Token& pr = lexer.next();
         if (pr.type != Token::Type::Symbol || pr.value[0] != ')') {
@@ -26,7 +31,18 @@ std::unique_ptr<Node> Parser::parseExpression(Lexer& lexer, int min_bp){
         }
     }
     else if (token.type == Token::Type::Word && isPreDefinedFunction(token)) {
-        auto [lhs_bp, rhs_bp] = getBindingPower(token);
+        auto [lhs_bp, rhs_bp] = getBindingPower(token, true);
+        std::unique_ptr<Node> op = createNode(token);
+        std::unique_ptr<Node> arg = parseExpression(lexer, rhs_bp);
+        if (arg == nullptr) {
+            /* Add error here */
+            return nullptr;
+        }
+        op->children.push_back(std::move(arg));
+        lhs = std::move(op);
+    }
+    else if (isTokenPreFix(token)) {
+        auto [lhs_bp, rhs_bp] = getBindingPower(token, true);
         std::unique_ptr<Node> op = createNode(token);
         std::unique_ptr<Node> arg = parseExpression(lexer, rhs_bp);
         if (arg == nullptr) {
@@ -84,8 +100,11 @@ std::unique_ptr<Node> Parser::parseExpression(Lexer& lexer, int min_bp){
     return lhs;
 }
 
-std::pair<int, int> getBindingPower(const Token&  token) {
+std::pair<int, int> getBindingPower(const Token&  token, bool isPrefix) {
     if (token.value.empty()) return std::make_pair(-1 , -1);
+    if (isPrefix) {
+        return std::make_pair(0, 5);
+    }
     if (token.type == Token::Type::Symbol) {
         switch (token.value[0]) {
             case '-': case '+': return std::make_pair(1, 2);
@@ -94,9 +113,6 @@ std::pair<int, int> getBindingPower(const Token&  token) {
             case '!': return std::make_pair(8, 0);
             default: return std::make_pair(-1, -1);
         }
-    }
-    if (token.type == Token::Type::Word) {
-        return std::make_pair(0, 5);
     }
     return std::make_pair(-1, -1);
 }
@@ -129,3 +145,12 @@ static bool isTokenPostFix(const Token& token) {
         default: return false;
     }
 }
+
+static bool isTokenPreFix(const Token& token) {
+    if (token.type != Token::Type::Symbol) return false;
+    switch (token.value[0]) {
+        case '-': return true;
+        default: return false;
+    }
+}
+
