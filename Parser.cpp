@@ -10,6 +10,19 @@ static bool isTokenPostFix(const Token& token);
 std::pair<int, int> getBindingPower(const Token&  token, bool isPrefix = false);
 static bool isTokenPreFix(const Token& token);
 
+std::unique_ptr<Node> Parser::parse(Lexer& lexer) {
+    if (lexer.peek().type == Token::Type::Eof) {
+        return nullptr;
+    }
+    auto ast = parseExpression(lexer, 0);
+    if (lexer.peek().type != Token::Type::Eof) {
+        /* Add error here */
+        return nullptr;
+    }
+
+    return ast;
+}
+
 
 std::unique_ptr<Node> Parser::parseExpression(Lexer& lexer, int min_bp){
     const Token& token = lexer.next();
@@ -31,8 +44,11 @@ std::unique_ptr<Node> Parser::parseExpression(Lexer& lexer, int min_bp){
         }
     }
     else if (token.type == Token::Type::Word && isPreDefinedFunction(token)) {
-        auto [lhs_bp, rhs_bp] = getBindingPower(token, true);
+        auto [lhs_bp, rhs_bp] = getBindingPower(token);
         std::unique_ptr<Node> op = createNode(token);
+        if (lexer.peek().type == Token::Type::Symbol && lexer.peek().value[0] == '(') {
+            rhs_bp = 100;
+        }
         std::unique_ptr<Node> arg = parseExpression(lexer, rhs_bp);
         if (arg == nullptr) {
             /* Add error here */
@@ -103,16 +119,22 @@ std::unique_ptr<Node> Parser::parseExpression(Lexer& lexer, int min_bp){
 std::pair<int, int> getBindingPower(const Token&  token, bool isPrefix) {
     if (token.value.empty()) return std::make_pair(-1 , -1);
     if (isPrefix) {
-        return std::make_pair(0, 5);
+        switch (token.value[0]) {
+            case '-': case '+': return std::make_pair(-1, 4);
+            default: return std::make_pair(-1 , -1);;
+        }
     }
     if (token.type == Token::Type::Symbol) {
         switch (token.value[0]) {
             case '-': case '+': return std::make_pair(1, 2);
             case '*': case '/': return std::make_pair(3, 4);
-            case '^': return std::make_pair(7, 6);
-            case '!': return std::make_pair(8, 0);
+            case '^': return std::make_pair(5, 4);
+            case '!': return std::make_pair(5, -1);
             default: return std::make_pair(-1, -1);
         }
+    }
+    if (token.type == Token::Type::Word) {
+        return std::make_pair(0, 2);
     }
     return std::make_pair(-1, -1);
 }
@@ -127,7 +149,6 @@ bool Parser::isPreDefinedFunction(const Token& token) {
 
 static std::unique_ptr<Node> createNode(const Token& token) {
     switch (token.type) {
-        /* TODO check before word if its a function */
         case Token::Type::Word:
             if (Parser::isPreDefinedFunction(token))
                 return std::make_unique<Node>(Node{Node::Type::Function, token.value});;
@@ -149,7 +170,7 @@ static bool isTokenPostFix(const Token& token) {
 static bool isTokenPreFix(const Token& token) {
     if (token.type != Token::Type::Symbol) return false;
     switch (token.value[0]) {
-        case '-': return true;
+        case '-': case '+': return true;
         default: return false;
     }
 }
