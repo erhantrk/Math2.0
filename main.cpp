@@ -8,13 +8,16 @@ Token::Type fn(Token::Type type) {
     return type;
 }
 int main() {
-    Lexer lexer("sin");
+    Lexer lexer("(x^2)!!x");
     if (!lexer.getError().empty()) {
         std::cerr << lexer.getError() << std::endl;
         return 1;
     }
 
     auto root = Parser::parse(lexer);
+    if (!root) {
+        std::cerr << Parser::getError() << std::endl;
+    }
     return 0;
 }
 
