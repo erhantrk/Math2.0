@@ -17,22 +17,25 @@ static std::string getUnexpectedTokenError(const Lexer& lexer);
 static std::string getInvalidStartError(const Lexer& lexer);
 static std::string getMissingParenError(const Lexer& lexer, const Token& open_paren_token);
 static std::string getMissingOperandForPrefixError(const Token& prefix_token);
-static std::string getMissingRhsError(const Token& operator_token);
+static std::string getMissingRhsError(const Token& operator_token, bool isImplicit);
+static std::string getEmptyParenError(const Token& open_paren_token);
+static std::string getMissingOperatorError(const Token& previous_token, const Token& offending_token);
 
 std::unique_ptr<Node> Parser::parse(Lexer& lexer) {
     if (lexer.peek().type == Token::Type::Eof) {
+        /* This is not an error there is no expression */
         return nullptr;
     }
     auto ast = parseExpression(lexer, 0);
     if (lexer.peek().type != Token::Type::Eof) {
-        if (error.empty())
+        if (error.empty()) {
             error = getUnexpectedTokenError(lexer);
+        }
         return nullptr;
     }
 
     return ast;
 }
-
 
 std::unique_ptr<Node> Parser::parseExpression(Lexer& lexer, int min_bp){
     const Token& token = lexer.peek();
@@ -49,11 +52,18 @@ std::unique_ptr<Node> Parser::parseExpression(Lexer& lexer, int min_bp){
         lhs = parseExpression(lexer, 0);
         const Token& pr = lexer.peek();
         if (pr.type != Token::Type::Symbol || pr.value[0] != ')') {
+            if (!lhs)
+                error = getInvalidStartError(lexer);
             if (error.empty())
                 error = getMissingParenError(lexer, token);
             return nullptr;
         }
         lexer.skip();
+        if (!lhs) {
+            if (error.empty())
+                error = getEmptyParenError(token);
+            return nullptr;
+        }
         if (lexer.peek().type == Token::Type::Number || lexer.peek().type == Token::Type::Word) {
             Token temp{Token::Type::Symbol, "*", token.line, token.pos, token.line_content};
             lexer.addToken(temp);
@@ -80,7 +90,10 @@ std::unique_ptr<Node> Parser::parseExpression(Lexer& lexer, int min_bp){
         std::unique_ptr<Node> arg = parseExpression(lexer, rhs_bp);
         if (arg == nullptr) {
             if (error.empty())
-                error = getMissingOperandForPrefixError(token);
+                if (lexer.peek().type == Token::Type::Eof)
+                    error = getMissingOperandForPrefixError(token);
+                else
+                    error = getInvalidStartError(lexer);
             return nullptr;
         }
         op->children.push_back(std::move(arg));
@@ -95,41 +108,47 @@ std::unique_ptr<Node> Parser::parseExpression(Lexer& lexer, int min_bp){
         if (lexer.peek().type == Token::Type::Symbol && lexer.peek().value[0] == ')') break;
 
         std::unique_ptr<Node> op = nullptr;
+        bool isImplicit = false;
         if (lexer.peek().type == Token::Type::Symbol) {
             if (lexer.peek().value[0] == '(') {
-                Token temp{Token::Type::Symbol, "*", token.line, token.pos, token.line_content};
+                Token temp{Token::Type::Symbol, "*", token.line, lexer.peek().pos-1, token.line_content};
                 op = createNode(temp);
                 lexer.addToken(temp);
+                isImplicit = true;
             }
             else {
                 op = createNode(lexer.peek());
             }
         }
         else if (lexer.peek().type == Token::Type::Word && token.type == Token::Type::Number) {
-            Token temp{Token::Type::Symbol, "*", token.line, token.pos, token.line_content};
+            Token temp{Token::Type::Symbol, "*", token.line, lexer.peek().pos-1, token.line_content};
             op = createNode(temp);
             lexer.addToken(temp);
+            isImplicit = true;
         }
         else {
-            /* Add error here */
+            if (error.empty())
+                error = getMissingOperatorError(token, lexer.peek());
             return nullptr;
         }
 
         auto&& [lhs_bp, rhs_bp] = getBindingPower(lexer.peek());
         if (lhs_bp < min_bp) break;
-        if (isTokenPostFix(lexer.next())) {
+        if (isTokenPostFix(lexer.peek())) {
+            lexer.skip();
             op->children.push_back(std::move(lhs));
             lhs = std::move(op);
             if (lexer.peek().type == Token::Type::Word || lexer.peek().type == Token::Type::Number) {
-                Token temp{Token::Type::Symbol, "*", token.line, token.pos, token.line_content};
+                Token temp{Token::Type::Symbol, "*", token.line, lexer.peek().pos-1, token.line_content};
                 lexer.addToken(temp);
             }
             continue;
         }
+        const auto& optoken = lexer.next();
         auto rhs = parseExpression(lexer, rhs_bp);
         if (rhs  == nullptr) {
             if (error.empty())
-                error = getMissingRhsError(lexer.peek());
+                error = getMissingRhsError(optoken, isImplicit);
             return nullptr;
         }
         op->children.push_back(std::move(lhs));
@@ -226,9 +245,7 @@ static std::string getUnexpectedTokenError(const Lexer& lexer) {
     const Token& offending_token = lexer.peek();
 
     std::ostringstream oss;
-    oss << "Parse Error: Unexpected token '" << offending_token.value
-        << "' found after the expression was complete.\n";
-
+    oss << "Parse Error: Unexpected token '" << offending_token.value << "'\n";
     oss << "--> at line " << offending_token.line << ":\n";
     oss << "    " << offending_token.line_content << "\n";
     oss << "    " << std::string(offending_token.pos, ' ') << "^-- This should not be here";
@@ -285,9 +302,9 @@ static std::string getMissingOperandForPrefixError(const Token& prefix_token) {
     return oss.str();
 }
 
-static std::string getMissingRhsError(const Token& operator_token) {
+static std::string getMissingRhsError(const Token& operator_token, const bool isImplicit) {
     std::ostringstream oss;
-    oss << "Parse Error: Infix operator '" << operator_token.value
+    oss << "Parse Error: Infix operator '" << (isImplicit ? "implicit " : "") << operator_token.value
         << "' is missing a right-hand side expression.\n";
 
     oss << "--> at line " << operator_token.line << ":\n";
@@ -295,4 +312,31 @@ static std::string getMissingRhsError(const Token& operator_token) {
     oss << "    " << std::string(operator_token.pos, ' ') << "^-- An expression was expected to follow this operator";
 
     return oss.str();
+}
+
+static std::string getEmptyParenError(const Token& open_paren_token) {
+    std::ostringstream oss;
+    oss << "Parse Error: An expression was expected inside parentheses, but none was found.\n";
+
+    oss << "--> at line " << open_paren_token.line << ":\n";
+    oss << "    " << open_paren_token.line_content << "\n";
+    oss << "    " << std::string(open_paren_token.pos, ' ') << "^-- Expected an expression after this parenthesis";
+
+    return oss.str();
+}
+
+static std::string getMissingOperatorError(const Token& previous_token, const Token& offending_token) {
+    std::ostringstream oss;
+    oss << "Parse Error: Missing operator between '" << previous_token.value
+        << "' and '" << offending_token.value << "'.\n";
+
+    oss << "--> at line " << offending_token.line << ":\n";
+    oss << "    " << offending_token.line_content << "\n";
+    oss << "    " << std::string(offending_token.pos, ' ') << "^-- An operator was expected here.";
+
+    return oss.str();
+}
+
+void Parser::clearError() {
+    error.clear();
 }

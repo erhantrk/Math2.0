@@ -8,7 +8,7 @@ Token::Type fn(Token::Type type) {
     return type;
 }
 int main() {
-    Lexer lexer("(x^2)!!x");
+    Lexer lexer("!a");
     if (!lexer.getError().empty()) {
         std::cerr << lexer.getError() << std::endl;
         return 1;
@@ -20,4 +20,5 @@ int main() {
     }
     return 0;
 }
+
 
