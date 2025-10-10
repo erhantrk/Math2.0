@@ -42,6 +42,10 @@ std::unique_ptr<Node> Parser::parseExpression(Lexer& lexer, int min_bp){
             /* Add error here */
             return nullptr;
         }
+        if (lexer.peek().type == Token::Type::Number || lexer.peek().type == Token::Type::Word) {
+            Token temp{Token::Type::Symbol, "*", token.line};
+            lexer.addToken(temp);
+        }
     }
     else if (token.type == Token::Type::Word && isPreDefinedFunction(token)) {
         auto [lhs_bp, rhs_bp] = getBindingPower(token);
@@ -102,6 +106,10 @@ std::unique_ptr<Node> Parser::parseExpression(Lexer& lexer, int min_bp){
         if (isTokenPostFix(lexer.next())) {
             op->children.push_back(std::move(lhs));
             lhs = std::move(op);
+            if (lexer.peek().type == Token::Type::Word || lexer.peek().type == Token::Type::Number) {
+                Token temp{Token::Type::Symbol, "*", token.line};
+                lexer.addToken(temp);
+            }
             continue;
         }
         auto rhs = parseExpression(lexer, rhs_bp);
@@ -173,5 +181,9 @@ static bool isTokenPreFix(const Token& token) {
         case '-': case '+': return true;
         default: return false;
     }
+}
+
+std::string Parser::getError() {
+    return error;
 }
 

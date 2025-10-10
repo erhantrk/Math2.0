@@ -16,7 +16,9 @@ struct Node {
 
 class Parser {
     static std::unique_ptr<Node> parseExpression(Lexer& lexer, int min_bp);
+    static inline std::string error;
 public:
     static bool isPreDefinedFunction(const Token& token);
     static std::unique_ptr<Node> parse(Lexer& lexer);
+    static std::string getError();
 };
