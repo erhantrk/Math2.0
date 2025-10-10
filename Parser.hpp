@@ -16,12 +16,13 @@ struct Node {
 
 class Parser {
     static std::unique_ptr<Node> parseExpression(Lexer& lexer, int min_bp);
+    static std::unique_ptr<Node> parseStatement(Lexer& lexer);
     static inline std::string error;
     static inline int parenthesesLevel = 0;
 
 public:
     static bool isPreDefinedFunction(const Token& token);
-    static std::unique_ptr<Node> parse(Lexer& lexer);
+    static std::vector<std::unique_ptr<Node>> parse(Lexer& lexer);
     static std::string getError();
     static void clearError();
 };
