@@ -10,7 +10,7 @@
 #include <vector>
 
 struct Token {
-    enum class Type {Number, Symbol, Word, Skip, Eof};
+    enum class Type {Number, Symbol, Word, Skip, Newline, Eof};
     Type type;
     std::string value;
     int line;

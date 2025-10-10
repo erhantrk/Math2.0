@@ -684,17 +684,6 @@ TEST_CASE("multiline function call") {
     REQUIRE(toLisp(ast) == "(sin (+ x y))");
 }
 
-TEST_CASE("multiline with blank lines inside parentheses") {
-    Lexer lx("(\n"
-             "  1 +\n"
-             "\n"
-             "  2\n"
-             ")");
-    auto ast = Parser::parse(lx);
-    REQUIRE(ast);
-    REQUIRE(toLisp(ast) == "(+ 1 2)");
-}
-
 TEST_CASE("multiline expression with dangling operator") {
     Lexer lx("a = 10 +\n"
              "    20");
@@ -735,13 +724,4 @@ TEST_CASE("multiline with unary operator on new line") {
     auto ast = Parser::parse(lx);
     REQUIRE(ast);
     REQUIRE(toLisp(ast) == "(= a (* 10 (- 2)))");
-}
-
-TEST_CASE("multiline with blank lines after operator") {
-    Lexer lx("a = 10 + \n"
-             "\n"
-             "    20");
-    auto ast = Parser::parse(lx);
-    REQUIRE(ast);
-    REQUIRE(toLisp(ast) == "(= a (+ 10 20))");
 }

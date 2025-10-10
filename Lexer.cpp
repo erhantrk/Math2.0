@@ -8,43 +8,64 @@ Token::Token(const Type& type, const std::string& value, int line, int pos, cons
 
 Lexer::Lexer(const std::string &input) {
     std::vector<std::pair<Type, std::regex>> token_specification = {
-        {Type::Number,  std::regex(R"(\d+(\.\d+)?)")},
-        {Type::Symbol,  std::regex(R"([!=\+\-\*/\^\(\)])")},
-        {Type::Word,    std::regex(R"([a-zA-Z_]\w*)")},
-        {Type::Skip,    std::regex(R"([ \t]+)")},
+        {Type::Number,    std::regex(R"(\d+(\.\d+)?)")},
+        {Type::Symbol,    std::regex(R"([!=\+\-\*/\^\(\)])")},
+        {Type::Word,      std::regex(R"([a-zA-Z_]\w*)")},
+        {Type::Newline,   std::regex(R"(\n)")},
+        {Type::Skip,      std::regex(R"([ \t\r]+)")},
     };
 
-    std::stringstream ss(input);
-    std::string line_content;
+    size_t position = 0;
     int line_number = 1;
 
-    while (std::getline(ss, line_content)) {
-        size_t position = 0;
-        while (position < line_content.length()) {
-            bool matched = false;
-            for (const auto& [type, re] : token_specification) {
-                std::smatch match;
-                if (std::regex_search(line_content.cbegin() + position, line_content.cend(), match, re, std::regex_constants::match_continuous)) {
-                    if (type != Type::Skip) {
-                        tokens.emplace_back(type, match.str(), line_number, position, line_content);
-                    }
-                    position += match.length();
-                    matched = true;
-                    break;
+    while (position < input.length()) {
+        bool matched = false;
+        for (const auto& [type, re] : token_specification) {
+            std::smatch match;
+            if (std::regex_search(input.cbegin() + position, input.cend(), match, re, std::regex_constants::match_continuous)) {
+
+                if (type == Type::Newline) {
+
+                    size_t line_start = input.rfind('\n', position - 1);
+                    line_start = (line_start == std::string::npos) ? 0 : line_start + 1;
+
+                    std::string line_content = input.substr(line_start, position - line_start);
+
+                    size_t column = position - line_start;
+
+                    tokens.emplace_back(type, match.str(), line_number, column, line_content);
+                    line_number++;
                 }
-            }
-            if (!matched) {
-                std::string offending(1, line_content[position]);
-                std::ostringstream err_oss;
-                err_oss << "Lexer Error: Unexpected character \"" << offending << "\" at line " << line_number << ", column " << position << ".\n";
-                err_oss << "    " << line_content << "\n";
-                err_oss << "    " << std::string(position, ' ') << "^";
-                error = err_oss.str();
-                tokens.clear();
-                return;
+                else if (type != Type::Skip) {
+                    size_t line_start = input.rfind('\n', position);
+                    line_start = (line_start == std::string::npos) ? 0 : line_start + 1;
+                    size_t line_end = input.find('\n', position);
+                    line_end = (line_end == std::string::npos) ? input.length() : line_end;
+                    std::string line_content = input.substr(line_start, line_end - line_start);
+
+                    tokens.emplace_back(type, match.str(), line_number, position - line_start, line_content);
+                }
+
+                position += match.length();
+                matched = true;
+                break;
             }
         }
-        line_number++;
+        if (!matched) {
+            size_t line_start = input.rfind('\n', position);
+            line_start = (line_start == std::string::npos) ? 0 : line_start + 1;
+            size_t line_end = input.find('\n', position);
+            std::string line_content = input.substr(line_start, line_end - line_start);
+
+            std::string offending(1, input[position]);
+            std::ostringstream err_oss;
+            err_oss << "Lexer Error: Unexpected character \"" << offending << "\" at line " << line_number << ", column " << (position - line_start) << ".\n";
+            err_oss << "    " << line_content << "\n";
+            err_oss << "    " << std::string(position - line_start, ' ') << "^";
+            error = err_oss.str();
+            tokens.clear();
+            return;
+        }
     }
 
     error = "";

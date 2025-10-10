@@ -13,6 +13,7 @@ static bool isTokenPostFix(const Token& token);
 std::pair<int, int> getBindingPower(const Token&  token, bool isPrefix = false);
 static bool isTokenPreFix(const Token& token);
 static std::string getNoArgError(const Lexer& lexer, const Token& token);
+static std::string getMultilineWoParenError(const Token& token);
 static std::string getUnexpectedTokenError(const Lexer& lexer);
 static std::string getInvalidStartError(const Lexer& lexer);
 static std::string getMissingParenError(const Lexer& lexer, const Token& open_paren_token);
@@ -38,16 +39,18 @@ std::unique_ptr<Node> Parser::parse(Lexer& lexer) {
     return ast;
 }
 
-std::unique_ptr<Node> Parser::parseExpression(Lexer& lexer, int min_bp){
+std::unique_ptr<Node> Parser::parseExpression(Lexer& lexer, int min_bp) {
     const Token& token = lexer.peek();
     const bool isValid = (token.type == Token::Type::Number)
                       || (token.type == Token::Type::Word)
                       || (token.type == Token::Type::Symbol && token.value[0] == '(')
-                      || isTokenPreFix(token);
+                      || isTokenPreFix(token)
+                      || isNewline(token);
     if (!isValid) {
         return nullptr;
     }
     lexer.skip();
+    if (isNewline(token)) *const_cast<Token*>(&token) = lexer.next(); /* Special case we need to skip the newline */
     std::unique_ptr<Node> lhs = nullptr;
     if (token.type == Token::Type::Symbol && token.value[0] == '(') {
         parenthesesLevel++;
@@ -135,10 +138,16 @@ std::unique_ptr<Node> Parser::parseExpression(Lexer& lexer, int min_bp){
             lexer.addToken(temp);
             isImplicit = true;
         }
-        else {
-            if (error.empty())
-                error = getMissingOperatorError(token, lexer.peek());
-            return nullptr;
+        else{
+            if (error.empty()) {
+                if (isNewline(token)) {
+                    error = getMultilineWoParenError(token);
+
+                }
+                else
+                    error = getMissingOperatorError(token, lexer.peek());
+                return nullptr;
+            }
         }
 
         auto&& [lhs_bp, rhs_bp] = getBindingPower(lexer.peek());
@@ -153,11 +162,11 @@ std::unique_ptr<Node> Parser::parseExpression(Lexer& lexer, int min_bp){
             }
             continue;
         }
-        const auto& optoken = lexer.next();
+        const auto& opToken = lexer.next();
         auto rhs = parseExpression(lexer, rhs_bp);
         if (rhs  == nullptr) {
             if (error.empty())
-                error = getMissingRhsError(optoken, isImplicit);
+                error = getMissingRhsError(opToken, isImplicit);
             return nullptr;
         }
         op->children.push_back(std::move(lhs));
@@ -206,7 +215,10 @@ static std::unique_ptr<Node> createNode(const Token& token) {
                 return std::make_unique<Node>(Node{Node::Type::Function, token.value});;
             return std::make_unique<Node>(Node{Node::Type::Variable, token.value});
         case Token::Type::Number: return std::make_unique<Node>(Node{Node::Type::Number, token.value});
-        case Token::Type::Symbol: return std::make_unique<Node>(Node{Node::Type::Operand, token.value});
+        case Token::Type::Symbol:
+            if (token.value[0] == '=')
+                return std::make_unique<Node>(Node{Node::Type::Assignment, token.value});
+            return std::make_unique<Node>(Node{Node::Type::Operand, token.value});
         default: return nullptr;
     }
 }
@@ -347,10 +359,21 @@ static std::string getMissingOperatorError(const Token& previous_token, const To
     return oss.str();
 }
 
+static std::string getMultilineWoParenError(const Token& token) {
+    std::ostringstream oss;
+    oss << "Parse Error: Multiline expressions must be enclosed in parentheses.\n";
+    oss << "--> at line " << token.line << ":\n";
+    oss << "    " << token.line_content << "\n";
+    oss << "    " << std::string(token.pos, ' ') << "^-- An expression cannot be split across lines here.\n";
+    oss << "    " << std::string(token.pos, ' ') << "   Consider wrapping the entire expression in parentheses `()`.";
+
+    return oss.str();
+}
+
 void Parser::clearError() {
     error.clear();
 }
 
 static bool isNewline(const Token& token) {
-    return token.type == Token::Type::Symbol && token.value[0] == '\n';
+    return token.type == Token::Type::Newline;
 }

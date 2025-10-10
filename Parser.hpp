@@ -8,7 +8,7 @@
 #include "Lexer.hpp"
 
 struct Node {
-    enum class Type {Number, Variable, Operand, Function};
+    enum class Type {Number, Variable, Operand, Function, Assignment};
     Type type;
     std::string value;
     std::vector<std::unique_ptr<Node>> children;
