@@ -656,3 +656,92 @@ TEST_CASE("Error: operator after open paren") {
                                  "     ^-- An expression cannot start here";
     REQUIRE_PARSER_ERROR("(* a)", expected_error);
 }
+
+TEST_CASE("multiline expression inside parentheses") {
+    Lexer lx("a = (100 +\n"
+             "     200 +\n"
+             "     300)");
+    auto ast = Parser::parse(lx);
+    REQUIRE(ast);
+    REQUIRE(toLisp(ast) == "(= a (+ (+ 100 200) 300))");
+}
+
+TEST_CASE("multiline with nested parentheses") {
+    Lexer lx("a = (1 +\n"
+             "     (2 * 3)\n"
+             "    )");
+    auto ast = Parser::parse(lx);
+    REQUIRE(ast);
+    REQUIRE(toLisp(ast) == "(= a (+ 1 (* 2 3)))");
+}
+
+TEST_CASE("multiline function call") {
+    Lexer lx("sin(\n"
+             "  x + y\n"
+             ")");
+    auto ast = Parser::parse(lx);
+    REQUIRE(ast);
+    REQUIRE(toLisp(ast) == "(sin (+ x y))");
+}
+
+TEST_CASE("multiline with blank lines inside parentheses") {
+    Lexer lx("(\n"
+             "  1 +\n"
+             "\n"
+             "  2\n"
+             ")");
+    auto ast = Parser::parse(lx);
+    REQUIRE(ast);
+    REQUIRE(toLisp(ast) == "(+ 1 2)");
+}
+
+TEST_CASE("multiline expression with dangling operator") {
+    Lexer lx("a = 10 +\n"
+             "    20");
+    auto ast = Parser::parse(lx);
+    REQUIRE(ast);
+    REQUIRE(toLisp(ast) == "(= a (+ 10 20))");
+}
+TEST_CASE("Error: unclosed parenthesis with newline") {
+    std::string expected_error = "Parse Error: Missing closing ')' for parenthesis that started on line 1.\n"
+                                 "--> at line 1:\n"
+                                 "    (a +\n"
+                                 "    ^-- This parenthesis was never closed.\n\n"
+                                 "Instead, the input ended before the parenthesis was closed.";
+    REQUIRE_PARSER_ERROR("(a +\n"
+                         " b", expected_error);
+}
+
+TEST_CASE("multiline with dangling multiplication operator") {
+    Lexer lx("a = 10 *\n"
+             "    2");
+    auto ast = Parser::parse(lx);
+    REQUIRE(ast);
+    REQUIRE(toLisp(ast) == "(= a (* 10 2))");
+}
+
+TEST_CASE("multiline with chained operators and precedence") {
+    Lexer lx("a = 10 +\n"
+             "    20 *\n"
+             "    30");
+    auto ast = Parser::parse(lx);
+    REQUIRE(ast);
+    REQUIRE(toLisp(ast) == "(= a (+ 10 (* 20 30)))");
+}
+
+TEST_CASE("multiline with unary operator on new line") {
+    Lexer lx("a = 10 * \n"
+             "    -2");
+    auto ast = Parser::parse(lx);
+    REQUIRE(ast);
+    REQUIRE(toLisp(ast) == "(= a (* 10 (- 2)))");
+}
+
+TEST_CASE("multiline with blank lines after operator") {
+    Lexer lx("a = 10 + \n"
+             "\n"
+             "    20");
+    auto ast = Parser::parse(lx);
+    REQUIRE(ast);
+    REQUIRE(toLisp(ast) == "(= a (+ 10 20))");
+}

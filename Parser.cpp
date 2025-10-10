@@ -20,6 +20,7 @@ static std::string getMissingOperandForPrefixError(const Token& prefix_token);
 static std::string getMissingRhsError(const Token& operator_token, bool isImplicit);
 static std::string getEmptyParenError(const Token& open_paren_token);
 static std::string getMissingOperatorError(const Token& previous_token, const Token& offending_token);
+static bool isNewline(const Token& token);
 
 std::unique_ptr<Node> Parser::parse(Lexer& lexer) {
     if (lexer.peek().type == Token::Type::Eof) {
@@ -49,6 +50,7 @@ std::unique_ptr<Node> Parser::parseExpression(Lexer& lexer, int min_bp){
     lexer.skip();
     std::unique_ptr<Node> lhs = nullptr;
     if (token.type == Token::Type::Symbol && token.value[0] == '(') {
+        parenthesesLevel++;
         lhs = parseExpression(lexer, 0);
         const Token& pr = lexer.peek();
         if (pr.type != Token::Type::Symbol || pr.value[0] != ')') {
@@ -59,6 +61,7 @@ std::unique_ptr<Node> Parser::parseExpression(Lexer& lexer, int min_bp){
             return nullptr;
         }
         lexer.skip();
+        parenthesesLevel--;
         if (!lhs) {
             if (error.empty())
                 error = getEmptyParenError(token);
@@ -73,6 +76,7 @@ std::unique_ptr<Node> Parser::parseExpression(Lexer& lexer, int min_bp){
         auto [lhs_bp, rhs_bp] = getBindingPower(token);
         std::unique_ptr<Node> op = createNode(token);
         if (lexer.peek().type == Token::Type::Symbol && lexer.peek().value[0] == '(') {
+            parenthesesLevel++;
             rhs_bp = 100;
         }
         std::unique_ptr<Node> arg = parseExpression(lexer, rhs_bp);
@@ -105,6 +109,11 @@ std::unique_ptr<Node> Parser::parseExpression(Lexer& lexer, int min_bp){
 
     while (true) {
         if (lexer.peek().type == Token::Type::Eof) break;
+        if (parenthesesLevel == 0 && isNewline(lexer.peek())) break;
+        if (parenthesesLevel > 0 && isNewline(lexer.peek())) {
+            lexer.skip();
+            continue;
+        }
         if (lexer.peek().type == Token::Type::Symbol && lexer.peek().value[0] == ')') break;
 
         std::unique_ptr<Node> op = nullptr;
@@ -172,6 +181,7 @@ std::pair<int, int> getBindingPower(const Token&  token, bool isPrefix) {
             case '*': case '/': return std::make_pair(3, 4);
             case '^': return std::make_pair(5, 4);
             case '!': return std::make_pair(5, -1);
+            case '=': return std::make_pair(100, -1);
             default: return std::make_pair(-1, -1);
         }
     }
@@ -339,4 +349,8 @@ static std::string getMissingOperatorError(const Token& previous_token, const To
 
 void Parser::clearError() {
     error.clear();
+}
+
+static bool isNewline(const Token& token) {
+    return token.type == Token::Type::Symbol && token.value[0] == '\n';
 }
