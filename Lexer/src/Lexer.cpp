@@ -58,7 +58,7 @@ Lexer::Lexer(const std::string &input) {
 
             std::string offending(1, input[position]);
             std::ostringstream err_oss;
-            err_oss << "Lexer Error: Unexpected character \"" << offending << "\" at line " << line_number <<
+            err_oss << "Unexpected character \"" << offending << "\" at line " << line_number <<
                     ", column " << (position - line_start) << ".\n";
             err_oss << "    " << line_content << "\n";
             err_oss << "    " << std::string(position - line_start, ' ') << "^-- This should not be here.";
