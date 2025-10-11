@@ -23,7 +23,7 @@ class Parser {
 
     static inline std::string error;
     static inline int parenthesesLevel = 0;
-    static inline std::unordered_set<std::string> variables = {};
+    static inline std::unordered_set<std::string> variables = {"e", "pi"};
 
 public:
     static bool isPreDefinedFunction(const Token &token);

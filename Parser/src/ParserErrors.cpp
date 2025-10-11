@@ -10,7 +10,7 @@ std::string getNoArgError(const Lexer &lexer, const Token &token) {
     std::ostringstream oss;
     oss << "Parse Error: Expected an argument for function '" << token.value << "'";
 
-    if (offending_token.type != Token::Type::Eof) {
+    if (offending_token.type != Token::Type::Eof && offending_token.type != Token::Type::Newline) {
         oss << ", but found '" << offending_token.value << "' instead.\n";
     } else {
         oss << " but reached the end of the input.\n";
@@ -62,7 +62,7 @@ std::string getMissingParenError(const Lexer &lexer, const Token &open_paren_tok
     oss << "    " << open_paren_token.line_content << "\n";
     oss << "    " << std::string(open_paren_token.pos, ' ') << "^-- This parenthesis was never closed.\n\n";
 
-    if (offending_token.type != Token::Type::Eof) {
+    if (offending_token.type != Token::Type::Eof && offending_token.type != Token::Type::Newline) {
         oss << "Instead, found '" << offending_token.value << "' here:\n";
         oss << "--> at line " << offending_token.line << ":\n";
         oss << "    " << offending_token.line_content << "\n";

@@ -69,14 +69,15 @@ static bool areAllVariablesDefined(const std::unique_ptr<Node> &node,
 }
 
 std::unique_ptr<Node> Parser::parseStatement(Lexer &lexer) {
-    auto expr = parseExpression(lexer, 0);
-    if (!expr) {
+    const Token& tmp = lexer.peek();
+    auto lhs = parseExpression(lexer, 0);
+    if (!lhs) {
         if (lexer.peek().type != Token::Type::Eof && error.empty()) error = getUnexpectedTokenError(lexer);
         return nullptr;
     }
 
     if (lexer.peek().value == "=") {
-        if (expr->type != Node::Type::Variable) {
+        if (lhs->type != Node::Type::Variable) {
             error = getInvalidAssignmentTargetError(lexer.peek());
             return nullptr;
         }
@@ -88,19 +89,24 @@ std::unique_ptr<Node> Parser::parseStatement(Lexer &lexer) {
             return nullptr;
         }
         std::string undefinedVar;
-        bool isDefined = areAllVariablesDefined(rhs, variables, undefinedVar);
-        if (!isDefined) {
+        if (!areAllVariablesDefined(rhs, variables, undefinedVar)) {
             if (error.empty())
                 error = getUndefinedVariableError(as, undefinedVar);
             return nullptr;
         }
 
-        auto assignment_node = std::make_unique<Node>(Node::Type::Assignment, expr->value);
+        auto assignment_node = std::make_unique<Node>(Node::Type::Assignment, lhs->value);
         assignment_node->children.push_back(std::move(rhs));
-        variables.emplace(expr->value);
+        variables.emplace(lhs->value);
         return assignment_node;
     }
-    return expr;
+    std::string undefinedVar;
+    if (!areAllVariablesDefined(lhs, variables, undefinedVar)) {
+        if (error.empty())
+            error = getUndefinedVariableError(tmp, undefinedVar);
+        return nullptr;
+    }
+    return lhs;
 }
 
 std::unique_ptr<Node> Parser::parseExpression(Lexer &lexer, int min_bp) {
@@ -109,7 +115,7 @@ std::unique_ptr<Node> Parser::parseExpression(Lexer &lexer, int min_bp) {
                          || (token.type == Token::Type::Word)
                          || (token.type == Token::Type::Symbol && token.value[0] == '(')
                          || isTokenPreFix(token)
-                         || isNewline(token);
+                         || (isNewline(token) && parenthesesLevel);
     if (!isValid) {
         return nullptr;
     }
@@ -142,7 +148,6 @@ std::unique_ptr<Node> Parser::parseExpression(Lexer &lexer, int min_bp) {
         auto [lhs_bp, rhs_bp] = getBindingPower(token);
         std::unique_ptr<Node> op = createNode(token);
         if (lexer.peek().type == Token::Type::Symbol && lexer.peek().value[0] == '(') {
-            parenthesesLevel++;
             rhs_bp = 100;
         }
         std::unique_ptr<Node> arg = parseExpression(lexer, rhs_bp);
