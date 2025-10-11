@@ -4,7 +4,7 @@
 
 #pragma once
 #include <string>
-#include "Lexer.hpp"
+#include "../../Lexer/inc/Lexer.hpp"
 
 
 std::string getNoArgError(const Lexer &lexer, const Token &token);

@@ -6,7 +6,7 @@
 #include <unordered_set>
 #include <vector>
 
-#include "Lexer.hpp"
+#include "../../Lexer/inc/Lexer.hpp"
 
 struct Node {
     enum class Type { Number, Variable, Operand, Function, Assignment };

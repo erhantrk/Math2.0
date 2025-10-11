@@ -1,11 +1,11 @@
 #include <iostream>
 
-#include "Lexer.hpp"
-#include "Lexer.hpp"
-#include "Parser.hpp"
+#include "Lexer/inc/Lexer.hpp"
+#include "Lexer/inc/Lexer.hpp"
+#include "Parser/inc/Parser.hpp"
 
 int main() {
-    Lexer lexer("x = 2 / 3 * yi + 2 -3 +f");
+    Lexer lexer("x = 2 \n y = 3 \n t = x + y");
     if (!lexer.getError().empty()) {
         std::cerr << lexer.getError() << std::endl;
         return 1;

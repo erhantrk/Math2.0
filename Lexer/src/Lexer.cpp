@@ -1,4 +1,4 @@
-#include "Lexer.hpp"
+#include "../inc/Lexer.hpp"
 #include <sstream>
 
 using Type = Token::Type;

@@ -8,9 +8,8 @@
 #include <vector>
 #include <sstream>
 
-#include "../Parser.hpp"
-#include "../ParserErrors.hpp"
-#include "../Lexer.hpp"
+#include "../Parser/inc/Parser.hpp"
+#include "../Lexer/inc/Lexer.hpp"
 
 static void toLispImpl(const Node* n, std::ostringstream& out) {
     if (!n) { out << "<null>"; return; }

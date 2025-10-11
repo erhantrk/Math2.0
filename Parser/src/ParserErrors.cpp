@@ -2,7 +2,7 @@
 // Created by Erhan Türker on 10/11/25.
 //
 
-#include "ParserErrors.hpp"
+#include "../inc/ParserErrors.hpp"
 #include <sstream>
 
 std::string getNoArgError(const Lexer &lexer, const Token &token) {

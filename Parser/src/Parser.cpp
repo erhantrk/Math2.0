@@ -2,10 +2,10 @@
 // Created by Erhan Türker on 10/7/25.
 //
 
-#include "Parser.hpp"
+#include "../inc/Parser.hpp"
 #include <ranges>
 #include <unordered_set>
-#include "ParserErrors.hpp"
+#include "../inc/ParserErrors.hpp"
 
 static std::unique_ptr<Node> createNode(const Token &token);
 
