@@ -4,9 +4,6 @@
 #include "Lexer.hpp"
 #include "Parser.hpp"
 
-Token::Type fn(Token::Type type) {
-    return type;
-}
 int main() {
     Lexer lexer("x = 2 / 3 * yi + 2 -3 +f");
     if (!lexer.getError().empty()) {
@@ -20,5 +17,3 @@ int main() {
     }
     return 0;
 }
-
-

@@ -5,8 +5,8 @@
 #include "ParserErrors.hpp"
 #include <sstream>
 
-std::string getNoArgError(const Lexer& lexer, const Token& token) {
-    const Token& offending_token = lexer.peek();
+std::string getNoArgError(const Lexer &lexer, const Token &token) {
+    const Token &offending_token = lexer.peek();
     std::ostringstream oss;
     oss << "Parse Error: Expected an argument for function '" << token.value << "'";
 
@@ -16,7 +16,7 @@ std::string getNoArgError(const Lexer& lexer, const Token& token) {
         oss << " but reached the end of the input.\n";
     }
 
-    const Token& ofToken = offending_token.type != Token::Type::Eof ? offending_token: token;
+    const Token &ofToken = offending_token.type != Token::Type::Eof ? offending_token : token;
 
     oss << "--> at line " << ofToken.line << ":\n";
     oss << "    " << ofToken.line_content << "\n";
@@ -25,8 +25,8 @@ std::string getNoArgError(const Lexer& lexer, const Token& token) {
     return oss.str();
 }
 
-std::string getUnexpectedTokenError(const Lexer& lexer) {
-    const Token& offending_token = lexer.peek();
+std::string getUnexpectedTokenError(const Lexer &lexer) {
+    const Token &offending_token = lexer.peek();
 
     std::ostringstream oss;
     oss << "Parse Error: Unexpected token '" << offending_token.value << "'\n";
@@ -37,12 +37,12 @@ std::string getUnexpectedTokenError(const Lexer& lexer) {
     return oss.str();
 }
 
-std::string getInvalidStartError(const Lexer& lexer) {
-    const Token& offending_token = lexer.peek();
+std::string getInvalidStartError(const Lexer &lexer) {
+    const Token &offending_token = lexer.peek();
 
     std::ostringstream oss;
     oss << "Parse Error: Invalid start of an expression. Cannot begin with token '"
-        << offending_token.value << "'.\n";
+            << offending_token.value << "'.\n";
 
     oss << "--> at line " << offending_token.line << ":\n";
     oss << "    " << offending_token.line_content << "\n";
@@ -51,12 +51,12 @@ std::string getInvalidStartError(const Lexer& lexer) {
     return oss.str();
 }
 
-std::string getMissingParenError(const Lexer& lexer, const Token& open_paren_token) {
-    const Token& offending_token = lexer.peek();
+std::string getMissingParenError(const Lexer &lexer, const Token &open_paren_token) {
+    const Token &offending_token = lexer.peek();
 
     std::ostringstream oss;
     oss << "Parse Error: Missing closing ')' for parenthesis that started on line "
-        << open_paren_token.line << ".\n";
+            << open_paren_token.line << ".\n";
 
     oss << "--> at line " << open_paren_token.line << ":\n";
     oss << "    " << open_paren_token.line_content << "\n";
@@ -74,10 +74,10 @@ std::string getMissingParenError(const Lexer& lexer, const Token& open_paren_tok
     return oss.str();
 }
 
-std::string getMissingOperandForPrefixError(const Token& prefix_token) {
+std::string getMissingOperandForPrefixError(const Token &prefix_token) {
     std::ostringstream oss;
     oss << "Parse Error: Prefix operator '" << prefix_token.value
-        << "' is missing an expression on its right-hand side.\n";
+            << "' is missing an expression on its right-hand side.\n";
 
     oss << "--> at line " << prefix_token.line << ":\n";
     oss << "    " << prefix_token.line_content << "\n";
@@ -86,10 +86,10 @@ std::string getMissingOperandForPrefixError(const Token& prefix_token) {
     return oss.str();
 }
 
-std::string getMissingRhsError(const Token& operator_token, const bool isImplicit) {
+std::string getMissingRhsError(const Token &operator_token, const bool isImplicit) {
     std::ostringstream oss;
     oss << "Parse Error: Infix operator '" << (isImplicit ? "implicit " : "") << operator_token.value
-        << "' is missing a right-hand side expression.\n";
+            << "' is missing a right-hand side expression.\n";
 
     oss << "--> at line " << operator_token.line << ":\n";
     oss << "    " << operator_token.line_content << "\n";
@@ -98,7 +98,7 @@ std::string getMissingRhsError(const Token& operator_token, const bool isImplici
     return oss.str();
 }
 
-std::string getMissingAssignmentError(const Token& operator_token) {
+std::string getMissingAssignmentError(const Token &operator_token) {
     std::ostringstream oss;
     oss << "Parse Error: Assignment operator '=' is missing a right-hand side expression.\n";
     oss << "--> at line " << operator_token.line << ":\n";
@@ -108,7 +108,7 @@ std::string getMissingAssignmentError(const Token& operator_token) {
     return oss.str();
 }
 
-std::string getEmptyParenError(const Token& open_paren_token) {
+std::string getEmptyParenError(const Token &open_paren_token) {
     std::ostringstream oss;
     oss << "Parse Error: An expression was expected inside parentheses, but none was found.\n";
 
@@ -119,10 +119,10 @@ std::string getEmptyParenError(const Token& open_paren_token) {
     return oss.str();
 }
 
-std::string getMissingOperatorError(const Token& previous_token, const Token& offending_token) {
+std::string getMissingOperatorError(const Token &previous_token, const Token &offending_token) {
     std::ostringstream oss;
     oss << "Parse Error: Missing operator between '" << previous_token.value
-        << "' and '" << offending_token.value << "'.\n";
+            << "' and '" << offending_token.value << "'.\n";
 
     oss << "--> at line " << offending_token.line << ":\n";
     oss << "    " << offending_token.line_content << "\n";
@@ -131,7 +131,7 @@ std::string getMissingOperatorError(const Token& previous_token, const Token& of
     return oss.str();
 }
 
-std::string getMultilineWoParenError(const Token& token) {
+std::string getMultilineWoParenError(const Token &token) {
     std::ostringstream oss;
     oss << "Parse Error: Multiline expressions must be enclosed in parentheses.\n";
     oss << "--> at line " << token.line << ":\n";
@@ -142,7 +142,7 @@ std::string getMultilineWoParenError(const Token& token) {
     return oss.str();
 }
 
-std::string getInvalidAssignmentTargetError(const Token& token) {
+std::string getInvalidAssignmentTargetError(const Token &token) {
     std::ostringstream oss;
     oss << "Parse Error: Invalid target for assignment.\n";
     oss << "--> at line " << token.line << ":\n";
@@ -151,7 +151,7 @@ std::string getInvalidAssignmentTargetError(const Token& token) {
     return oss.str();
 }
 
-std::string getUndefinedVariableError(const Token& as, const std::string& variableName) {
+std::string getUndefinedVariableError(const Token &as, const std::string &variableName) {
     size_t var_col = as.line_content.find(variableName, as.pos);
 
     if (var_col == std::string::npos) {
@@ -160,10 +160,10 @@ std::string getUndefinedVariableError(const Token& as, const std::string& variab
 
     std::ostringstream out;
     out << "Parse Error: Use of undefined variable '" << variableName << "'.\n"
-        << "--> at line " << as.line << ":\n"
-        << "    " << as.line_content << "\n"
-        << "    " << std::string(var_col, ' ')
-        << "^-- This variable has not been defined";
+            << "--> at line " << as.line << ":\n"
+            << "    " << as.line_content << "\n"
+            << "    " << std::string(var_col, ' ')
+            << "^-- This variable has not been defined";
 
     return out.str();
 }
