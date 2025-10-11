@@ -3,26 +3,14 @@
 //
 
 #include "Parser.hpp"
-
 #include <ranges>
 #include <unordered_set>
-#include <sstream>
+#include "ParserErrors.hpp"
 
 static std::unique_ptr<Node> createNode(const Token& token);
 static bool isTokenPostFix(const Token& token);
 std::pair<int, int> getBindingPower(const Token&  token, bool isPrefix = false);
 static bool isTokenPreFix(const Token& token);
-static std::string getNoArgError(const Lexer& lexer, const Token& token);
-static std::string getMultilineWoParenError(const Token& token);
-static std::string getUnexpectedTokenError(const Lexer& lexer);
-static std::string getInvalidStartError(const Lexer& lexer);
-static std::string getMissingParenError(const Lexer& lexer, const Token& open_paren_token);
-static std::string getMissingOperandForPrefixError(const Token& prefix_token);
-static std::string getMissingRhsError(const Token& operator_token, bool isImplicit);
-static std::string getEmptyParenError(const Token& open_paren_token);
-static std::string getMissingOperatorError(const Token& previous_token, const Token& offending_token);
-static std::string getInvalidAssignmentTargetError(const Token& token);
-static std::string getMissingAssignmentError(const Token& operator_token);
 static bool isNewline(const Token& token);
 
 std::vector<std::unique_ptr<Node>> Parser::parse(Lexer& lexer) {
@@ -53,6 +41,27 @@ std::vector<std::unique_ptr<Node>> Parser::parse(Lexer& lexer) {
     return statements;
 }
 
+static bool areAllVariablesDefined(const std::unique_ptr<Node>& node, const std::unordered_set<std::string>& definedVariables, std::string& undefinedVariable) {
+    if (!node) {
+        return true;
+    }
+
+    if (node->type == Node::Type::Variable) {
+        if (definedVariables.find(node->value) == definedVariables.end()) {
+            undefinedVariable = node->value;
+            return false;
+        }
+    }
+
+    for (const auto& child : node->children) {
+        if (!areAllVariablesDefined(child, definedVariables, undefinedVariable)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 std::unique_ptr<Node> Parser::parseStatement(Lexer& lexer) {
     auto expr = parseExpression(lexer, 0);
     if (!expr) {
@@ -72,9 +81,17 @@ std::unique_ptr<Node> Parser::parseStatement(Lexer& lexer) {
                 error = getMissingAssignmentError(as);
             return nullptr;
         }
+        std::string undefinedVar;
+        bool isDefined = areAllVariablesDefined(rhs, variables, undefinedVar);
+        if (!isDefined) {
+            if (error.empty())
+                error = getUndefinedVariableError(as, undefinedVar);
+            return nullptr;
+        }
 
         auto assignment_node = std::make_unique<Node>(Node::Type::Assignment, expr->value);
         assignment_node->children.push_back(std::move(rhs));
+        variables.emplace(expr->value);
         return assignment_node;
     }
     return expr;
@@ -138,10 +155,12 @@ std::unique_ptr<Node> Parser::parseExpression(Lexer& lexer, int min_bp) {
         std::unique_ptr<Node> arg = parseExpression(lexer, rhs_bp);
         if (arg == nullptr) {
             if (error.empty())
-                if (lexer.peek().type == Token::Type::Eof)
+                if (lexer.peek().type == Token::Type::Eof) {
                     error = getMissingOperandForPrefixError(token);
-                else
+                }
+                else {
                     error = getInvalidStartError(lexer);
+                }
             return nullptr;
         }
         op->children.push_back(std::move(arg));
@@ -247,6 +266,18 @@ bool Parser::isPreDefinedFunction(const Token& token) {
 
 }
 
+std::string Parser::getError() {
+    return error;
+}
+
+void Parser::clearError() {
+    error.clear();
+}
+
+static bool isNewline(const Token& token) {
+    return token.type == Token::Type::Newline;
+}
+
 static std::unique_ptr<Node> createNode(const Token& token) {
     switch (token.type) {
         case Token::Type::Word:
@@ -276,162 +307,4 @@ static bool isTokenPreFix(const Token& token) {
         case '-': case '+': return true;
         default: return false;
     }
-}
-
-std::string Parser::getError() {
-    return error;
-}
-
-static std::string getNoArgError(const Lexer& lexer, const Token& token) {
-    const Token& offending_token = lexer.peek();
-    std::ostringstream oss;
-    oss << "Parse Error: Expected an argument for function '" << token.value << "'";
-
-    if (offending_token.type != Token::Type::Eof) {
-        oss << ", but found '" << offending_token.value << "' instead.\n";
-    } else {
-        oss << " but reached the end of the input.\n";
-    }
-
-    const Token& ofToken = offending_token.type != Token::Type::Eof ? offending_token: token;
-
-    oss << "--> at line " << ofToken.line << ":\n";
-    oss << "    " << ofToken.line_content << "\n";
-    oss << "    " << std::string(ofToken.pos, ' ') << "^-- Here";
-
-    return oss.str();
-}
-
-static std::string getUnexpectedTokenError(const Lexer& lexer) {
-    const Token& offending_token = lexer.peek();
-
-    std::ostringstream oss;
-    oss << "Parse Error: Unexpected token '" << offending_token.value << "'\n";
-    oss << "--> at line " << offending_token.line << ":\n";
-    oss << "    " << offending_token.line_content << "\n";
-    oss << "    " << std::string(offending_token.pos, ' ') << "^-- This should not be here";
-
-    return oss.str();
-}
-
-static std::string getInvalidStartError(const Lexer& lexer) {
-    const Token& offending_token = lexer.peek();
-
-    std::ostringstream oss;
-    oss << "Parse Error: Invalid start of an expression. Cannot begin with token '"
-        << offending_token.value << "'.\n";
-
-    oss << "--> at line " << offending_token.line << ":\n";
-    oss << "    " << offending_token.line_content << "\n";
-    oss << "    " << std::string(offending_token.pos, ' ') << "^-- An expression cannot start here";
-
-    return oss.str();
-}
-
-static std::string getMissingParenError(const Lexer& lexer, const Token& open_paren_token) {
-    const Token& offending_token = lexer.peek();
-
-    std::ostringstream oss;
-    oss << "Parse Error: Missing closing ')' for parenthesis that started on line "
-        << open_paren_token.line << ".\n";
-
-    oss << "--> at line " << open_paren_token.line << ":\n";
-    oss << "    " << open_paren_token.line_content << "\n";
-    oss << "    " << std::string(open_paren_token.pos, ' ') << "^-- This parenthesis was never closed.\n\n";
-
-    if (offending_token.type != Token::Type::Eof) {
-        oss << "Instead, found '" << offending_token.value << "' here:\n";
-        oss << "--> at line " << offending_token.line << ":\n";
-        oss << "    " << offending_token.line_content << "\n";
-        oss << "    " << std::string(offending_token.pos, ' ') << "^-- Expected ')'";
-    } else {
-        oss << "Instead, the input ended before the parenthesis was closed.";
-    }
-
-    return oss.str();
-}
-
-static std::string getMissingOperandForPrefixError(const Token& prefix_token) {
-    std::ostringstream oss;
-    oss << "Parse Error: Prefix operator '" << prefix_token.value
-        << "' is missing an expression on its right-hand side.\n";
-
-    oss << "--> at line " << prefix_token.line << ":\n";
-    oss << "    " << prefix_token.line_content << "\n";
-    oss << "    " << std::string(prefix_token.pos, ' ') << "^-- An expression was expected to follow this operator";
-
-    return oss.str();
-}
-
-static std::string getMissingRhsError(const Token& operator_token, const bool isImplicit) {
-    std::ostringstream oss;
-    oss << "Parse Error: Infix operator '" << (isImplicit ? "implicit " : "") << operator_token.value
-        << "' is missing a right-hand side expression.\n";
-
-    oss << "--> at line " << operator_token.line << ":\n";
-    oss << "    " << operator_token.line_content << "\n";
-    oss << "    " << std::string(operator_token.pos, ' ') << "^-- An expression was expected to follow this operator";
-
-    return oss.str();
-}
-
-static std::string getMissingAssignmentError(const Token& operator_token) {
-    std::ostringstream oss;
-    oss << "Parse Error: Assignment operator '=' is missing a right-hand side expression.\n";
-    oss << "--> at line " << operator_token.line << ":\n";
-    oss << "    " << operator_token.line_content << "\n";
-    oss << "    " << std::string(operator_token.pos, ' ') << "^-- An expression was expected to follow the assignment.";
-
-    return oss.str();
-}
-
-static std::string getEmptyParenError(const Token& open_paren_token) {
-    std::ostringstream oss;
-    oss << "Parse Error: An expression was expected inside parentheses, but none was found.\n";
-
-    oss << "--> at line " << open_paren_token.line << ":\n";
-    oss << "    " << open_paren_token.line_content << "\n";
-    oss << "    " << std::string(open_paren_token.pos, ' ') << "^-- Expected an expression after this parenthesis";
-
-    return oss.str();
-}
-
-static std::string getMissingOperatorError(const Token& previous_token, const Token& offending_token) {
-    std::ostringstream oss;
-    oss << "Parse Error: Missing operator between '" << previous_token.value
-        << "' and '" << offending_token.value << "'.\n";
-
-    oss << "--> at line " << offending_token.line << ":\n";
-    oss << "    " << offending_token.line_content << "\n";
-    oss << "    " << std::string(offending_token.pos, ' ') << "^-- An operator was expected here.";
-
-    return oss.str();
-}
-
-static std::string getMultilineWoParenError(const Token& token) {
-    std::ostringstream oss;
-    oss << "Parse Error: Multiline expressions must be enclosed in parentheses.\n";
-    oss << "--> at line " << token.line << ":\n";
-    oss << "    " << token.line_content << "\n";
-    oss << "    " << std::string(token.pos, ' ') << "^-- An expression cannot be split across lines here.\n";
-    oss << "    " << std::string(token.pos, ' ') << "   Consider wrapping the entire expression in parentheses `()`.";
-
-    return oss.str();
-}
-
-static std::string getInvalidAssignmentTargetError(const Token& token) {
-    std::ostringstream oss;
-    oss << "Parse Error: Invalid target for assignment.\n";
-    oss << "--> at line " << token.line << ":\n";
-    oss << "    " << token.line_content << "\n";
-    oss << "    " << std::string(token.pos, ' ') << "^-- Cannot assign to this expression.";
-    return oss.str();
-}
-
-void Parser::clearError() {
-    error.clear();
-}
-
-static bool isNewline(const Token& token) {
-    return token.type == Token::Type::Newline;
 }

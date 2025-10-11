@@ -30,7 +30,7 @@ public:
     explicit Lexer(const std::string& input);
     std::string getError() const;
     const Token&  peek() const;
-    const Token&  next();
+    Token next();
     void skip();
     void addToken(const Token& token);
 };

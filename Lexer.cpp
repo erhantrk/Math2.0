@@ -77,9 +77,9 @@ const Token& Lexer::peek() const{
     const Token& token = tokens.back();
     return token;
 }
-const Token& Lexer::next() {
+Token Lexer::next() {
     if (tokens.empty()) return Eof;
-    Token& token = tokens.back();
+    Token token = tokens.back();
     tokens.pop_back();
     return token;
 }

@@ -8,7 +8,7 @@ Token::Type fn(Token::Type type) {
     return type;
 }
 int main() {
-    Lexer lexer("x = (\n 4 + 5 / \n (3 + 2))");
+    Lexer lexer("x = 2 / 3 * yi + 2 -3 +f");
     if (!lexer.getError().empty()) {
         std::cerr << lexer.getError() << std::endl;
         return 1;

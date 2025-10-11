@@ -3,6 +3,7 @@
 //
 
 #pragma once
+#include <unordered_set>
 #include <vector>
 
 #include "Lexer.hpp"
@@ -19,6 +20,7 @@ class Parser {
     static std::unique_ptr<Node> parseStatement(Lexer& lexer);
     static inline std::string error;
     static inline int parenthesesLevel = 0;
+    static inline std::unordered_set<std::string> variables = {};
 
 public:
     static bool isPreDefinedFunction(const Token& token);

@@ -9,6 +9,7 @@
 #include <sstream>
 
 #include "../Parser.hpp"
+#include "../ParserErrors.hpp"
 #include "../Lexer.hpp"
 
 static void toLispImpl(const Node* n, std::ostringstream& out) {
