@@ -3,9 +3,6 @@
 
 using Type = Token::Type;
 
-Token::Token(const Type &type, const std::string &value, int line, int pos, const std::string &line_content)
-    : type(type), value(value), line(line), pos(pos), line_content(line_content) {
-}
 
 Lexer::Lexer(const std::string &input) {
     std::vector<std::pair<Type, std::regex> > token_specification = {
@@ -95,23 +92,4 @@ void Lexer::addToken(const Token &token) {
 
 std::string Lexer::getError() const {
     return error;
-}
-
-std::ostream &operator<<(std::ostream &os, const Token &token) {
-    std::string tokenStr;
-    switch (token.type) {
-        case Type::Number: tokenStr = "Number";
-            break;
-        case Type::Symbol: tokenStr = "Symbol";
-            break;
-        case Type::Word: tokenStr = "Word";
-            break;
-        case Type::Skip: tokenStr = "Skip";
-            break;
-        case Type::Eof: tokenStr = "Eof";
-            break;
-        default: tokenStr = "Unknown";
-    }
-    os << "Token(" << tokenStr << ", '" << token.value << "', L" << token.line << " P" << token.pos << ")";
-    return os;
 }

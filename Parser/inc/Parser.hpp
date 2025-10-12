@@ -7,17 +7,17 @@
 #include <vector>
 
 #include "../../Lexer/inc/Lexer.hpp"
-
-struct Node {
-    enum class Type { Number, Variable, Operand, Function, Assignment };
-
-    Type type;
-    std::string value;
-    std::vector<std::unique_ptr<Node> > children;
-};
+#include "../../Node/inc/Node.hpp"
 
 class Parser {
     static std::unique_ptr<Node> parseExpression(Lexer &lexer, int min_bp);
+    static std::unique_ptr<Node> parseLhs(Lexer &lexer, Token& token);
+    static std::unique_ptr<Node> parseRhs(Lexer &lexer, std::unique_ptr<Node>& lhs, const Token& token, int min_bp);
+
+    static std::unique_ptr<Node> parseParentheses(Lexer &lexer, const Token &token);
+    static std::unique_ptr<Node> parseFunction(Lexer &lexer, const Token &token);
+    static std::unique_ptr<Node> parsePrefixToken(Lexer &lexer, const Token &token);
+    static std::unique_ptr<Node> parseOperator(Lexer &lexer, const Token &token, bool& outToken);
 
     static std::unique_ptr<Node> parseStatement(Lexer &lexer);
 

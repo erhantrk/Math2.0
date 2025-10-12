@@ -5,7 +5,7 @@
 #include "Parser/inc/Parser.hpp"
 
 int main() {
-    Lexer lexer("x = 2 \n y = 3 \n t = x + sin (x + \n x * y)2");
+    Lexer lexer("(2 + 3");
     if (!lexer.getError().empty()) {
         std::cerr << lexer.getError() << std::endl;
         return 1;

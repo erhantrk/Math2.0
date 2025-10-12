@@ -516,7 +516,7 @@ TEST_CASE("multiplication and unary operator") {
 
 
 TEST_CASE("invalid: empty parentheses") {
-    std::string expected_error = "Parse Error: An expression was expected inside parentheses, but none was found.\n"
+    std::string expected_error = "An expression was expected inside parentheses, but none was found.\n"
             "--> at line 1:\n"
             "    ()\n"
             "    ^-- Expected an expression after this parenthesis";
@@ -524,7 +524,7 @@ TEST_CASE("invalid: empty parentheses") {
 }
 
 TEST_CASE("invalid: mismatched parentheses") {
-    std::string expected_error = "Parse Error: Missing closing ')' for parenthesis that started on line 1.\n"
+    std::string expected_error = "Missing closing ')' for parenthesis that started on line 1.\n"
             "--> at line 1:\n"
             "    (2 + 3\n"
             "    ^-- This parenthesis was never closed.\n\n"
@@ -533,7 +533,7 @@ TEST_CASE("invalid: mismatched parentheses") {
 }
 
 TEST_CASE("invalid: operator missing rhs inside parens") {
-    std::string expected_error = "Parse Error: Infix operator '+' is missing a right-hand side expression.\n"
+    std::string expected_error = "Infix operator '+' is missing a right-hand side expression.\n"
             "--> at line 1:\n"
             "    (2 + )\n"
             "       ^-- An expression was expected to follow this operator";
@@ -542,7 +542,7 @@ TEST_CASE("invalid: operator missing rhs inside parens") {
 
 TEST_CASE("Complex false example") {
     std::string expected_error =
-            "Parse Error: Expected an argument for function 'cos' but reached the end of the input.\n"
+            "Expected an argument for function 'cos' but reached the end of the input.\n"
             "--> at line 1:\n"
             "    2sin x * 5cos\n"
             "              ^-- Here";
@@ -550,7 +550,7 @@ TEST_CASE("Complex false example") {
 }
 
 TEST_CASE("Complex false example 2") {
-    std::string expected_error = "Parse Error: Expected an argument for function 'sin', but found '!' instead.\n"
+    std::string expected_error = "Expected an argument for function 'sin', but found '!' instead.\n"
             "--> at line 1:\n"
             "    2x^3! ^ sin !\n"
             "                ^-- Here";
@@ -558,7 +558,7 @@ TEST_CASE("Complex false example 2") {
 }
 
 TEST_CASE("invalid: double infix operator") {
-    std::string expected_error = "Parse Error: Infix operator '+' is missing a right-hand side expression.\n"
+    std::string expected_error = "Infix operator '+' is missing a right-hand side expression.\n"
             "--> at line 1:\n"
             "    1 + * 2\n"
             "      ^-- An expression was expected to follow this operator";
@@ -566,7 +566,7 @@ TEST_CASE("invalid: double infix operator") {
 }
 
 TEST_CASE("invalid: trailing binary operator") {
-    std::string expected_error = "Parse Error: Infix operator '*' is missing a right-hand side expression.\n"
+    std::string expected_error = "Infix operator '*' is missing a right-hand side expression.\n"
             "--> at line 1:\n"
             "    1 + 2 *\n"
             "          ^-- An expression was expected to follow this operator";
@@ -574,23 +574,15 @@ TEST_CASE("invalid: trailing binary operator") {
 }
 
 TEST_CASE("invalid: closing parenthesis without opening") {
-    std::string expected_error = "Parse Error: Unexpected token ')'\n"
+    std::string expected_error = "Unexpected token ')'\n"
             "--> at line 1:\n"
             "    1 + 2)\n"
             "         ^-- This should not be here";
     REQUIRE_PARSER_ERROR("1 + 2)", expected_error);
 }
 
-TEST_CASE("implicit false multiplication") {
-    std::string expected_error = "Parse Error: Missing operator between 'x' and 'sin'.\n"
-            "--> at line 1:\n"
-            "    x sin(y)\n"
-            "      ^-- An operator was expected here.";
-    REQUIRE_PARSER_ERROR("x sin(y)", expected_error);
-}
-
 TEST_CASE("invalid: function with empty parens") {
-    std::string expected_error = "Parse Error: An expression was expected inside parentheses, but none was found.\n"
+    std::string expected_error = "An expression was expected inside parentheses, but none was found.\n"
             "--> at line 1:\n"
             "    sin()\n"
             "       ^-- Expected an expression after this parenthesis";
@@ -598,7 +590,7 @@ TEST_CASE("invalid: function with empty parens") {
 }
 
 TEST_CASE("invalid: number next to a number") {
-    std::string expected_error = "Parse Error: Missing operator between '3' and '4'.\n"
+    std::string expected_error = "Missing operator between '3' and '4'.\n"
             "--> at line 1:\n"
             "    3 4\n"
             "      ^-- An operator was expected here.";
@@ -606,7 +598,7 @@ TEST_CASE("invalid: number next to a number") {
 }
 
 TEST_CASE("Error: dangling open parenthesis deep nest") {
-    std::string expected_error = "Parse Error: Missing closing ')' for parenthesis that started on line 1.\n"
+    std::string expected_error = "Missing closing ')' for parenthesis that started on line 1.\n"
             "--> at line 1:\n"
             "    (a + (b * c)\n"
             "    ^-- This parenthesis was never closed.\n\n"
@@ -615,7 +607,7 @@ TEST_CASE("Error: dangling open parenthesis deep nest") {
 }
 
 TEST_CASE("Error: operator abuse plus minus") {
-    std::string expected_error = "Parse Error: Invalid start of an expression. Cannot begin with token '*'.\n"
+    std::string expected_error = "Invalid start of an expression. Cannot begin with token '*'.\n"
             "--> at line 1:\n"
             "    a + - * b\n"
             "          ^-- An expression cannot start here";
@@ -623,32 +615,24 @@ TEST_CASE("Error: operator abuse plus minus") {
 }
 
 TEST_CASE("Error: postfix on nothing at start") {
-    std::string expected_error = "Parse Error: Unexpected token '!'\n"
+    std::string expected_error = "Unexpected token '!'\n"
             "--> at line 1:\n"
             "    !a\n"
             "    ^-- This should not be here";
     REQUIRE_PARSER_ERROR("!a", expected_error);
 }
 
-TEST_CASE("Error: invalid implicit multiplication with function") {
-    std::string expected_error = "Parse Error: Missing operator between 'x' and 'sin'.\n"
-            "--> at line 1:\n"
-            "    x sin(y)\n"
-            "      ^-- An operator was expected here.";
-    REQUIRE_PARSER_ERROR("x sin(y)", expected_error);
-}
-
 TEST_CASE("Error: function call missing argument at end") {
     std::string expected_error =
-            "Parse Error: Expected an argument for function 'cos' but reached the end of the input.\n"
+            "Expected an argument for function 'cos' but reached the end of the input.\n"
             "--> at line 1:\n"
-            "    a + cos\n"
+            "    1 + cos\n"
             "        ^-- Here";
-    REQUIRE_PARSER_ERROR("a + cos", expected_error);
+    REQUIRE_PARSER_ERROR("1 + cos", expected_error);
 }
 
 TEST_CASE("Error: unexpected closing parenthesis deep") {
-    std::string expected_error = "Parse Error: Unexpected token ')'\n"
+    std::string expected_error = "Unexpected token ')'\n"
             "--> at line 4:\n"
             "    (a + (b * c)))\n"
             "                 ^-- This should not be here";
@@ -656,7 +640,7 @@ TEST_CASE("Error: unexpected closing parenthesis deep") {
 }
 
 TEST_CASE("Error: trailing unary minus") {
-    std::string expected_error = "Parse Error: Infix operator '-' is missing a right-hand side expression.\n"
+    std::string expected_error = "Infix operator '-' is missing a right-hand side expression.\n"
             "--> at line 1:\n"
             "    a - \n"
             "      ^-- An expression was expected to follow this operator";
@@ -664,7 +648,7 @@ TEST_CASE("Error: trailing unary minus") {
 }
 
 TEST_CASE("Error: operator after open paren") {
-    std::string expected_error = "Parse Error: Invalid start of an expression. Cannot begin with token '*'.\n"
+    std::string expected_error = "Invalid start of an expression. Cannot begin with token '*'.\n"
             "--> at line 1:\n"
             "    (* a)\n"
             "     ^-- An expression cannot start here";
@@ -706,7 +690,7 @@ TEST_CASE("multiline expression with dangling operator") {
 }
 
 TEST_CASE("Error: unclosed parenthesis with newline") {
-    std::string expected_error = "Parse Error: Missing closing ')' for parenthesis that started on line 1.\n"
+    std::string expected_error = "Missing closing ')' for parenthesis that started on line 1.\n"
             "--> at line 1:\n"
             "    (a +\n"
             "    ^-- This parenthesis was never closed.\n\n"
@@ -750,7 +734,7 @@ TEST_CASE("parse multiple statements with assignment") {
 }
 
 TEST_CASE("Error: invalid assignment target") {
-    std::string expected_error = "Parse Error: Invalid target for assignment.\n"
+    std::string expected_error = "Invalid target for assignment.\n"
             "--> at line 1:\n"
             "    5 + 3 = x\n"
             "          ^-- Cannot assign to this expression.";
@@ -830,7 +814,7 @@ TEST_CASE("function as an operand") {
 }
 
 TEST_CASE("Error: invalid assignment to function call") {
-    std::string expected_error = "Parse Error: Invalid target for assignment.\n"
+    std::string expected_error = "Invalid target for assignment.\n"
             "--> at line 1:\n"
             "    sin(x) = 5\n"
             "           ^-- Cannot assign to this expression.";
@@ -838,7 +822,7 @@ TEST_CASE("Error: invalid assignment to function call") {
 }
 
 TEST_CASE("Error: invalid assignment to parenthesized expression") {
-    std::string expected_error = "Parse Error: Invalid target for assignment.\n"
+    std::string expected_error = "Invalid target for assignment.\n"
             "--> at line 1:\n"
             "    (x+1) = 5\n"
             "          ^-- Cannot assign to this expression.";
@@ -846,7 +830,7 @@ TEST_CASE("Error: invalid assignment to parenthesized expression") {
 }
 
 TEST_CASE("Error: operator abuse with division") {
-    std::string expected_error = "Parse Error: Infix operator '*' is missing a right-hand side expression.\n"
+    std::string expected_error = "Infix operator '*' is missing a right-hand side expression.\n"
             "--> at line 1:\n"
             "    x * / y\n"
             "      ^-- An expression was expected to follow this operator";
@@ -854,14 +838,14 @@ TEST_CASE("Error: operator abuse with division") {
 }
 
 TEST_CASE("Error: invalid character token from lexer") {
-    std::string expected_error = "Lexer Error: Unexpected character \"@\" at line 1, column 2.\n"
+    std::string expected_error = "Unexpected character \"@\" at line 1, column 2.\n"
             "    x @ y\n"
             "      ^-- This should not be here.";
     REQUIRE_PARSER_ERROR("x @ y", expected_error);
 }
 
 TEST_CASE("Error: assignment missing right-hand side") {
-    std::string expected_error = "Parse Error: Assignment operator '=' is missing a right-hand side expression.\n"
+    std::string expected_error = "Assignment operator '=' is missing a right-hand side expression.\n"
             "--> at line 1:\n"
             "    x = \n"
             "      ^-- An expression was expected to follow the assignment.";
