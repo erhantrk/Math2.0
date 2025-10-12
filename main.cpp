@@ -5,15 +5,19 @@
 #include "Parser/inc/Parser.hpp"
 
 int main() {
-    Lexer lexer("(2 + 3");
+    Lexer lexer("y = m*x + c");
     if (!lexer.getError().empty()) {
         std::cerr << lexer.getError() << std::endl;
         return 1;
     }
-
-    auto root = Parser::parse(lexer);
+    Parser parser;
+    parser.defineVariable("y");
+    parser.defineVariable("m");
+    parser.defineVariable("x");
+    parser.defineVariable("c");
+    auto root = parser.parse(lexer);
     if (root.empty()) {
-        std::cerr << Parser::getError() << std::endl;
+        std::cerr << parser.getError() << std::endl;
     }
     return 0;
 }

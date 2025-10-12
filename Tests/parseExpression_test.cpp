@@ -63,456 +63,607 @@ static std::string toLisp(const std::unique_ptr<Node> &n) {
     return out.str();
 }
 
-TEST_CASE("number literal only") {
-    Lexer lx("42");
-    auto ast = Parser::parse(lx);
+
+
+TEST_CASE("simple number") {
+    Lexer lx("1");
+    Parser parser;
+    auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "42");
+    REQUIRE(toLisp(ast[0]) == "1");
 }
 
-TEST_CASE("variable only") {
-    Lexer lx("x");
-    auto ast = Parser::parse(lx);
+TEST_CASE("Simple addition and subtraction") {
+    Lexer lx("5 - 3 + 2");
+    Parser parser;
+    auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "x");
+    REQUIRE(toLisp(ast[0]) == "(+ (- 5 3) 2)");
 }
 
-TEST_CASE("simple addition") {
-    Lexer lx("2 + 3");
-    auto ast = Parser::parse(lx);
+TEST_CASE("Simple multiplication and division") {
+    Lexer lx("10 / 5 * 2");
+    Parser parser;
+    auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(+ 2 3)");
+    REQUIRE(toLisp(ast[0]) == "(* (/ 10 5) 2)");
 }
 
-TEST_CASE("multiplication binds tighter than addition") {
-    Lexer lx("2 + 3 * 4");
-    auto ast = Parser::parse(lx);
+TEST_CASE("Exponent with multiplication") {
+    Lexer lx("2 * 3^2");
+    Parser parser;
+    auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(+ 2 (* 3 4))");
+    REQUIRE(toLisp(ast[0]) == "(* 2 (^ 3 2))");
 }
 
-TEST_CASE("right-associative power") {
-    Lexer lx("a ^ b ^ c");
-    auto ast = Parser::parse(lx);
+TEST_CASE("Exponent with parentheses") {
+    Lexer lx("(2 * 3)^2");
+    Parser parser;
+    auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(^ a (^ b c))");
+    REQUIRE(toLisp(ast[0]) == "(^ (* 2 3) 2)");
 }
 
-TEST_CASE("postfix factorial") {
-    Lexer lx("x!");
-    auto ast = Parser::parse(lx);
+TEST_CASE("Unary minus with addition") {
+    Lexer lx("-5 + -3");
+    Parser parser;
+    auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(! x)");
+    REQUIRE(toLisp(ast[0]) == "(+ (- 5) (- 3))");
 }
 
-TEST_CASE("chained postfix factorial") {
-    Lexer lx("x!!");
-    auto ast = Parser::parse(lx);
+TEST_CASE("Multiplication with unary minus") {
+    Lexer lx("5 * -3");
+    Parser parser;
+    auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(! (! x))");
+    REQUIRE(toLisp(ast[0]) == "(* 5 (- 3))");
 }
 
-TEST_CASE("predefined function as prefix: sin x") {
-    Lexer lx("sin x");
-    auto ast = Parser::parse(lx);
+TEST_CASE("Double negative") {
+    Lexer lx("5--3");
+    Parser parser;
+    auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(sin x)");
+    REQUIRE(toLisp(ast[0]) == "(- 5 (- 3))");
 }
 
-TEST_CASE("nested predefined functions: cos sin x") {
-    Lexer lx("cos sin x");
-    auto ast = Parser::parse(lx);
+TEST_CASE("Double factorial") {
+    Lexer lx("3!!");
+    Parser parser;
+    auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(cos (sin x))");
+    REQUIRE(toLisp(ast[0]) == "(! (! 3))");
 }
 
-TEST_CASE("function + binary op: sin x + y") {
-    Lexer lx("sin x + y");
-    auto ast = Parser::parse(lx);
+TEST_CASE("Factorial with parentheses") {
+    Lexer lx("(x+y)!");
+    Parser parser;
+    parser.defineVariable("x");
+    parser.defineVariable("y");
+    auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(+ (sin x) y)");
+    REQUIRE(toLisp(ast[0]) == "(! (+ x y))");
 }
 
-TEST_CASE("Prefix function and postfix") {
-    Lexer lx("sin x!");
-    auto ast = Parser::parse(lx);
-    REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(sin (! x))");
-}
-
-TEST_CASE("starts with symbol +") {
-    Lexer lx("+ 2");
-    auto ast = Parser::parse(lx);
-    REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(+ 2)");
-}
-
-TEST_CASE("Number and var") {
-    Lexer lx("2x");
-    auto ast = Parser::parse(lx);
-    REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(* 2 x)");
-}
-
-
-TEST_CASE("Number and prefix expr") {
-    Lexer lx("2sin x");
-    auto ast = Parser::parse(lx);
-    REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(* 2 (sin x))");
-}
-
-TEST_CASE("Decimal number only") {
-    Lexer lx("2.3123");
-    auto ast = Parser::parse(lx);
-    REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "2.3123");
-}
-
-TEST_CASE("Postfix with number") {
-    Lexer lx("5!");
-    auto ast = Parser::parse(lx);
-    REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(! 5)");
-}
-
-TEST_CASE("Empty") {
-    Lexer lx("");
-    auto ast = Parser::parse(lx);
-    REQUIRE_FALSE(!ast.empty());
-}
-
-TEST_CASE("Auto mult with power") {
-    Lexer lx("x=0\n2x^3");
-    auto ast = Parser::parse(lx);
-    REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[1]) == "(* 2 (^ x 3))");
-}
-
-TEST_CASE("Power and postfix") {
-    Lexer lx("2x^3! ^ sin 2");
-    auto ast = Parser::parse(lx);
-    REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(* 2 (^ x (^ (! 3) (sin 2))))");
-}
-
-TEST_CASE("parenthesized addition") {
-    Lexer lx("(2 + 3)");
-    auto ast = Parser::parse(lx);
-    REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(+ 2 3)");
-}
-
-TEST_CASE("parentheses override precedence: (2 + 3) * 4") {
-    Lexer lx("(2 + 3) * 4");
-    auto ast = Parser::parse(lx);
-    REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(* (+ 2 3) 4)");
-}
-
-TEST_CASE("implicit multiplication with parentheses: 2(x + y)") {
-    Lexer lx("2(x + y)");
-    auto ast = Parser::parse(lx);
-    REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(* 2 (+ x y))");
-}
-
-TEST_CASE("implicit multiplication with parentheses: (z ^ t)(x + y)") {
-    Lexer lx("(1 ^ 2)(3 + 4)");
-    auto ast = Parser::parse(lx);
-    REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(* (^ 1 2) (+ 3 4))");
-}
-
-TEST_CASE("function with parenthesized arg: sin (x + y)") {
-    Lexer lx("sin (x + y)");
-    auto ast = Parser::parse(lx);
-    REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(sin (+ x y))");
-}
-
-TEST_CASE("redundant parentheses collapse: (((x)))") {
-    Lexer lx("(((x)))");
-    auto ast = Parser::parse(lx);
-    REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "x");
-}
-
-TEST_CASE("power with parenthesized base: (2x)^3") {
-    Lexer lx("(2x)^3");
-    auto ast = Parser::parse(lx);
-    REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(^ (* 2 x) 3)");
-}
-
-TEST_CASE("power with parenthesized exponent: x^(y + 1)") {
-    Lexer lx("x^(y + 1)");
-    auto ast = Parser::parse(lx);
-    REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(^ x (+ y 1))");
-}
-
-TEST_CASE("parentheses and right-assoc power: (a ^ b) ^ c") {
-    Lexer lx("(a ^ b) ^ c");
-    auto ast = Parser::parse(lx);
-    REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(^ (^ a b) c)");
-}
-
-TEST_CASE("factorial on parenthesized group: (x + 1)!") {
-    Lexer lx("(x + 1)!");
-    auto ast = Parser::parse(lx);
-    REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(! (+ x 1))");
-}
-
-TEST_CASE("power and postfix with parentheses: (x!)^2") {
-    Lexer lx("(x!)^2");
-    auto ast = Parser::parse(lx);
-    REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(^ (! x) 2)");
-}
-
-TEST_CASE("power and prefix function: x^sin 2") {
-    Lexer lx("x^sin 2");
-    auto ast = Parser::parse(lx);
-    REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(^ x (sin 2))");
-}
-
-TEST_CASE("nested with funcs, postfix, and parens: cos (sin (x + 1)!)") {
-    Lexer lx("cos (sin (x + 1)!)");
-    auto ast = Parser::parse(lx);
-    REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(cos (! (sin (+ x 1))))");
-}
-
-TEST_CASE("simple unary minus") {
-    Lexer lx("-5");
-    auto ast = Parser::parse(lx);
-    REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(- 5)");
-}
-
-TEST_CASE("unary minus binds tighter than addition") {
-    Lexer lx("-a + b");
-    auto ast = Parser::parse(lx);
-    REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(+ (- a) b)");
-}
-
-TEST_CASE("unary minus binds tighter than multiplication") {
-    Lexer lx("-a * b");
-    auto ast = Parser::parse(lx);
-    REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(* (- a) b)");
-}
-
-TEST_CASE("chained unary operators") {
-    Lexer lx("-+-x");
-    auto ast = Parser::parse(lx);
-    REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(- (+ (- x)))");
-}
-
-TEST_CASE("power binds tighter than unary minus") {
-    Lexer lx("-x^2");
-    auto ast = Parser::parse(lx);
-    REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(- (^ x 2))");
-}
-
-TEST_CASE("parentheses override unary minus precedence") {
-    Lexer lx("(-x)^2");
-    auto ast = Parser::parse(lx);
-    REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(^ (- x) 2)");
-}
-
-TEST_CASE("postfix binds tighter than unary minus") {
+TEST_CASE("Unary minus with factorial") {
     Lexer lx("-x!");
-    auto ast = Parser::parse(lx);
+    Parser parser;
+    parser.defineVariable("x");
+    auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(- (! x))");
 }
 
-TEST_CASE("unary minus with prefix function") {
-    Lexer lx("-sin(x)");
-    auto ast = Parser::parse(lx);
+TEST_CASE("Simple function call tan") {
+    Lexer lx("tan(x)");
+    Parser parser;
+    parser.defineVariable("x");
+    auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(- (sin x))");
+    REQUIRE(toLisp(ast[0]) == "(tan x)");
 }
 
-TEST_CASE("prefix function and operators") {
-    Lexer lx("sin 3^3*2");
-    auto ast = Parser::parse(lx);
+TEST_CASE("Simple function call log") {
+    Lexer lx("log(10)");
+    Parser parser;
+    auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(sin (* (^ 3 3) 2))");
+    REQUIRE(toLisp(ast[0]) == "(log 10)");
 }
 
-TEST_CASE("prefix function and operators with parentheses") {
-    Lexer lx("sin (3^3)*2");
-    auto ast = Parser::parse(lx);
+TEST_CASE("Function call with expression") {
+    Lexer lx("sqrt(x^2 + y^2)");
+    Parser parser;
+    parser.defineVariable("x");
+    parser.defineVariable("y");
+    auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(* (sin (^ 3 3)) 2)");
+    REQUIRE(toLisp(ast[0]) == "(sqrt (+ (^ x 2) (^ y 2)))");
 }
 
-TEST_CASE("implicit multiplication between two variables") {
-    Lexer lx("x y");
-    auto ast = Parser::parse(lx);
-    REQUIRE_FALSE(!ast.empty());
+TEST_CASE("Implicit multiplication with function") {
+    Lexer lx("2sin(x)");
+    Parser parser;
+    parser.defineVariable("x");
+    auto ast = parser.parse(lx);
+    REQUIRE(!ast.empty());
+    REQUIRE(toLisp(ast[0]) == "(* 2 (sin x))");
 }
 
-TEST_CASE("implicit multiplication with postfix on parenthesis") {
-    Lexer lx("2(x+y)!");
-    auto ast = Parser::parse(lx);
+TEST_CASE("Chained function calls") {
+    Lexer lx("sin cos tan x");
+    Parser parser;
+    parser.defineVariable("x");
+    auto ast = parser.parse(lx);
+    REQUIRE(!ast.empty());
+    REQUIRE(toLisp(ast[0]) == "(sin (cos (tan x)))");
+}
+
+TEST_CASE("Implicit multiplication with parentheses") {
+    Lexer lx("(x+1)(y+2)");
+    Parser parser;
+    parser.defineVariable("x");
+    parser.defineVariable("y");
+    auto ast = parser.parse(lx);
+    REQUIRE(!ast.empty());
+    REQUIRE(toLisp(ast[0]) == "(* (+ x 1) (+ y 2))");
+}
+
+TEST_CASE("Simple assignment") {
+    Lexer lx("y = m*x + c");
+    Parser parser;
+    parser.defineVariable("y");
+    parser.defineVariable("m");
+    parser.defineVariable("x");
+    parser.defineVariable("c");
+    auto ast = parser.parse(lx);
+    REQUIRE(!ast.empty());
+    REQUIRE(toLisp(ast[0]) == "(= y (+ (* m x) c))");
+}
+
+TEST_CASE("Assignment with complex expression") {
+    Lexer lx("x = -b / (2a)");
+    Parser parser;
+    parser.defineVariable("x");
+    parser.defineVariable("b");
+    parser.defineVariable("a");
+    auto ast = parser.parse(lx);
+    REQUIRE(!ast.empty());
+    REQUIRE(toLisp(ast[0]) == "(= x (/ (- b) (* 2 a)))");
+}
+
+TEST_CASE("Complex polynomial") {
+    Lexer lx("3x^2 + 2y - 1");
+    Parser parser;
+    parser.defineVariable("x");
+    parser.defineVariable("y");
+    auto ast = parser.parse(lx);
+    REQUIRE(!ast.empty());
+    REQUIRE(toLisp(ast[0]) == "(- (+ (* 3 (^ x 2)) (* 2 y)) 1)");
+}
+
+TEST_CASE("Complex expression with unary minus and factorial") {
+    Lexer lx("-(x+y)*z!");
+    Parser parser;
+    parser.defineVariable("x");
+    parser.defineVariable("y");
+    parser.defineVariable("z");
+    auto ast = parser.parse(lx);
+    REQUIRE(!ast.empty());
+    REQUIRE(toLisp(ast[0]) == "(* (- (+ x y)) (! z))");
+}
+
+TEST_CASE("Complex expression with functions and factorials") {
+    Lexer lx("sin(x!) ^ cos(y!)");
+    Parser parser;
+    parser.defineVariable("x");
+    parser.defineVariable("y");
+    auto ast = parser.parse(lx);
+    REQUIRE(!ast.empty());
+    REQUIRE(toLisp(ast[0]) == "(^ (sin (! x)) (cos (! y)))");
+}
+
+TEST_CASE("Scientific notation with exponent") {
+    Lexer lx("2.5 * 10^3");
+    Parser parser;
+    auto ast = parser.parse(lx);
+    REQUIRE(!ast.empty());
+    REQUIRE(toLisp(ast[0]) == "(* 2.5 (^ 10 3))");
+}
+
+TEST_CASE("Chained division") {
+    Lexer lx("a / b / c");
+    Parser parser;
+    parser.defineVariable("a");
+    parser.defineVariable("b");
+    parser.defineVariable("c");
+    auto ast = parser.parse(lx);
+    REQUIRE(!ast.empty());
+    REQUIRE(toLisp(ast[0]) == "(/ (/ a b) c)");
+}
+
+TEST_CASE("Chained subtraction") {
+    Lexer lx("a - b - c");
+    Parser parser;
+    parser.defineVariable("a");
+    parser.defineVariable("b");
+    parser.defineVariable("c");
+    auto ast = parser.parse(lx);
+    REQUIRE(!ast.empty());
+    REQUIRE(toLisp(ast[0]) == "(- (- a b) c)");
+}
+
+TEST_CASE("Function with unary minus argument") {
+    Lexer lx("sin -x");
+    Parser parser;
+    parser.defineVariable("x");
+    auto ast = parser.parse(lx);
+    REQUIRE(!ast.empty());
+    REQUIRE(toLisp(ast[0]) == "(sin (- x))");
+}
+
+TEST_CASE("Factorial of factorial") {
+    Lexer lx("(2!)!");
+    Parser parser;
+    auto ast = parser.parse(lx);
+    REQUIRE(!ast.empty());
+    REQUIRE(toLisp(ast[0]) == "(! (! 2))");
+}
+
+TEST_CASE("Mixed precedence addition and multiplication") {
+    Lexer lx("a + b * c + d");
+    Parser parser;
+    parser.defineVariable("a");
+    parser.defineVariable("b");
+    parser.defineVariable("c");
+    parser.defineVariable("d");
+    auto ast = parser.parse(lx);
+    REQUIRE(!ast.empty());
+    REQUIRE(toLisp(ast[0]) == "(+ (+ a (* b c)) d)");
+}
+
+TEST_CASE("Mixed precedence with parentheses") {
+    Lexer lx("a * (b + c) * d");
+    Parser parser;
+    parser.defineVariable("a");
+    parser.defineVariable("b");
+    parser.defineVariable("c");
+    parser.defineVariable("d");
+    auto ast = parser.parse(lx);
+    REQUIRE(!ast.empty());
+    REQUIRE(toLisp(ast[0]) == "(* (* a (+ b c)) d)");
+}
+
+TEST_CASE("Implicit multiplication with nested parentheses") {
+    Lexer lx("3(4(5))");
+    Parser parser;
+    auto ast = parser.parse(lx);
+    REQUIRE(!ast.empty());
+    REQUIRE(toLisp(ast[0]) == "(* 3 (* 4 5))");
+}
+
+TEST_CASE("Implicit multiplication of variables in parentheses") {
+    Lexer lx("(x)(y)(z)");
+    Parser parser;
+    parser.defineVariable("x");
+    parser.defineVariable("y");
+    parser.defineVariable("z");
+    auto ast = parser.parse(lx);
+    REQUIRE(!ast.empty());
+    REQUIRE(toLisp(ast[0]) == "(* (* x y) z)");
+}
+
+TEST_CASE("Unary minus vs exponent precedence") {
+    Lexer lx("-2^2");
+    Parser parser;
+    auto ast = parser.parse(lx);
+    REQUIRE(!ast.empty());
+    REQUIRE(toLisp(ast[0]) == "(- (^ 2 2))");
+}
+
+TEST_CASE("Parentheses with unary minus and exponent") {
+    Lexer lx("(-2)^2");
+    Parser parser;
+    auto ast = parser.parse(lx);
+    REQUIRE(!ast.empty());
+    REQUIRE(toLisp(ast[0]) == "(^ (- 2) 2)");
+}
+
+TEST_CASE("Complex mixed arithmetic") {
+    Lexer lx("1 + 2 * 3 / 4 - 5");
+    Parser parser;
+    auto ast = parser.parse(lx);
+    REQUIRE(!ast.empty());
+    REQUIRE(toLisp(ast[0]) == "(- (+ 1 (/ (* 2 3) 4)) 5)");
+}
+
+TEST_CASE("Implicit multiplication of factorial and variable") {
+    Lexer lx("x!y");
+    Parser parser;
+    parser.defineVariable("x");
+    parser.defineVariable("y");
+    auto ast = parser.parse(lx);
+    REQUIRE(!ast.empty());
+    REQUIRE(toLisp(ast[0]) == "(* (! x) y)");
+}
+
+TEST_CASE("Implicit multiplication of functions") {
+    Lexer lx("sin(x)cos(y)");
+    Parser parser;
+    parser.defineVariable("x");
+    parser.defineVariable("y");
+    auto ast = parser.parse(lx);
+    REQUIRE(!ast.empty());
+    REQUIRE(toLisp(ast[0]) == "(* (sin x) (cos y))");
+}
+
+TEST_CASE("Implicit multiplication of number and factorial") {
+    Lexer lx("3x!");
+    Parser parser;
+    parser.defineVariable("x");
+    auto ast = parser.parse(lx);
+    REQUIRE(!ast.empty());
+    REQUIRE(toLisp(ast[0]) == "(* 3 (! x))");
+}
+
+TEST_CASE("Function call without parentheses") {
+    Lexer lx("sqrt 9");
+    Parser parser;
+    auto ast = parser.parse(lx);
+    REQUIRE(!ast.empty());
+    REQUIRE(toLisp(ast[0]) == "(sqrt 9)");
+}
+
+TEST_CASE("Multiplication with unary minus variable") {
+    Lexer lx("2 * -x");
+    Parser parser;
+    parser.defineVariable("x");
+    auto ast = parser.parse(lx);
+    REQUIRE(!ast.empty());
+    REQUIRE(toLisp(ast[0]) == "(* 2 (- x))");
+}
+
+TEST_CASE("Chained unary operators") {
+    Lexer lx("+-x");
+    Parser parser;
+    parser.defineVariable("x");
+    auto ast = parser.parse(lx);
+    REQUIRE(!ast.empty());
+    REQUIRE(toLisp(ast[0]) == "(+ (- x))");
+}
+
+TEST_CASE("Implicit multiplication with number and parenthesized factorial") {
+    Lexer lx("2(x!)");
+    Parser parser;
+    parser.defineVariable("x");
+    auto ast = parser.parse(lx);
+    REQUIRE(!ast.empty());
+    REQUIRE(toLisp(ast[0]) == "(* 2 (! x))");
+}
+
+TEST_CASE("Division with parenthesized expression") {
+    Lexer lx("1 / (x+1)");
+    Parser parser;
+    parser.defineVariable("x");
+    auto ast = parser.parse(lx);
+    REQUIRE(!ast.empty());
+    REQUIRE(toLisp(ast[0]) == "(/ 1 (+ x 1))");
+}
+
+TEST_CASE("Right-associative exponentiation with factorial") {
+    Lexer lx("x^y^z!");
+    Parser parser;
+    parser.defineVariable("x");
+    parser.defineVariable("y");
+    parser.defineVariable("z");
+    auto ast = parser.parse(lx);
+    REQUIRE(!ast.empty());
+    REQUIRE(toLisp(ast[0]) == "(^ x (^ y (! z)))");
+}
+
+TEST_CASE("Factorial of a complex function call") {
+    Lexer lx("sin( (x+y) / (a-b) )!");
+    Parser parser;
+    parser.defineVariable("x");
+    parser.defineVariable("y");
+    parser.defineVariable("a");
+    parser.defineVariable("b");
+    auto ast = parser.parse(lx);
+    REQUIRE(!ast.empty());
+    REQUIRE(toLisp(ast[0]) == "(! (sin (/ (+ x y) (- a b))))");
+}
+
+
+TEST_CASE("Multiline parentheses") {
+    Lexer lx("(10 +\n 2) * 3");
+    Parser parser;
+    auto ast = parser.parse(lx);
+    REQUIRE(!ast.empty());
+    REQUIRE(toLisp(ast[0]) == "(* (+ 10 2) 3)");
+}
+
+TEST_CASE("Multiline implicit multiplication with factorial") {
+    Lexer lx("2(x +\n y)!");
+    Parser parser;
+    parser.defineVariable("x");
+    parser.defineVariable("y");
+    auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(* 2 (! (+ x y)))");
 }
 
-TEST_CASE("Prefix fun with prefix symbol") {
-    Lexer lx("sin - 2");
-    auto ast = Parser::parse(lx);
+TEST_CASE("Multiline function call with factorial") {
+    Lexer lx("sin(\n x * y\n)!");
+    Parser parser;
+    parser.defineVariable("x");
+    parser.defineVariable("y");
+    auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(sin (- 2))");
+    REQUIRE(toLisp(ast[0]) == "(! (sin (* x y)))");
 }
 
-TEST_CASE("implicit multiplication (x)2") {
-    Lexer lx("(x)2");
-    auto ast = Parser::parse(lx);
+TEST_CASE("Multiline assignment") {
+    Lexer lx("a = (\n 1 + (2 * 3)\n - 4\n)");
+    Parser parser;
+    parser.defineVariable("a");
+    auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(* x 2)");
+    REQUIRE(toLisp(ast[0]) == "(= a (- (+ 1 (* 2 3)) 4))");
 }
 
-TEST_CASE("implicit multiplication (x^2)sin x") {
-    Lexer lx("(x^2)sin x");
-    auto ast = Parser::parse(lx);
+TEST_CASE("Implicit multiplication after factorial") {
+    Lexer lx("x! y");
+    Parser parser;
+    parser.defineVariable("x");
+    parser.defineVariable("y");
+    auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(* (^ x 2) (sin x))");
+    REQUIRE(toLisp(ast[0]) == "(* (! x) y)");
 }
 
-TEST_CASE("implicit multiplication (x^2)!!x") {
-    Lexer lx("(x^2)!!x");
-    auto ast = Parser::parse(lx);
+TEST_CASE("Implicit multiplication after parenthesized factorial") {
+    Lexer lx("(x)!y");
+    Parser parser;
+    parser.defineVariable("x");
+    parser.defineVariable("y");
+    auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(* (! (! (^ x 2))) x)");
+    REQUIRE(toLisp(ast[0]) == "(* (! x) y)");
 }
 
-
-TEST_CASE("ultimate stress test") {
-    Lexer lx("-sin(x+1)! ^ -2(y!)");
-    auto ast = Parser::parse(lx);
+TEST_CASE("Implicit multiplication with factorial and parentheses") {
+    Lexer lx("(x+1)!(y+2)");
+    Parser parser;
+    parser.defineVariable("x");
+    parser.defineVariable("y");
+    auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(* (- (^ (! (sin (+ x 1))) (- 2))) (! y))");
+    REQUIRE(toLisp(ast[0]) == "(* (! (+ x 1)) (+ y 2))");
 }
 
-TEST_CASE("implicit multiplication: variable and parenthesis") {
-    Lexer lx("2(3+4)");
-    auto ast = Parser::parse(lx);
+TEST_CASE("Implicit multiplication number and variable factorial") {
+    Lexer lx("2x!");
+    Parser parser;
+    parser.defineVariable("x");
+    auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(* 2 (+ 3 4))");
+    REQUIRE(toLisp(ast[0]) == "(* 2 (! x))");
 }
 
-TEST_CASE("implicit multiplication: parenthesis and variable") {
-    Lexer lx("(1+2)3");
-    auto ast = Parser::parse(lx);
+TEST_CASE("Factorial of function call with multiplication") {
+    Lexer lx("sin(x)! * 2");
+    Parser parser;
+    parser.defineVariable("x");
+    auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(* (+ 1 2) 3)");
+    REQUIRE(toLisp(ast[0]) == "(* (! (sin x)) 2)");
 }
 
-TEST_CASE("implicit multiplication: postfixed group and parenthesis") {
-    Lexer lx("(x+y)!(a-b)");
-    auto ast = Parser::parse(lx);
+TEST_CASE("Implicit multiplication with parenthesized factorial") {
+    Lexer lx("3(x!)");
+    Parser parser;
+    parser.defineVariable("x");
+    auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(* (! (+ x y)) (- a b))");
+    REQUIRE(toLisp(ast[0]) == "(* 3 (! x))");
 }
 
-TEST_CASE("unary vs binary minus: subtraction of a negative") {
-    Lexer lx("a - -b");
-    auto ast = Parser::parse(lx);
+TEST_CASE("Function call without parentheses on factorial") {
+    Lexer lx("sin x!");
+    Parser parser;
+    parser.defineVariable("x");
+    auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(- a (- b))");
+    REQUIRE(toLisp(ast[0]) == "(sin (! x))");
 }
 
-TEST_CASE("unary vs binary minus: multiplication by a negative") {
-    Lexer lx("a * -b");
-    auto ast = Parser::parse(lx);
+TEST_CASE("Factorial of function call") {
+    Lexer lx("log(10)!");
+    Parser parser;
+    auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(* a (- b))");
+    REQUIRE(toLisp(ast[0]) == "(! (log 10))");
 }
 
-TEST_CASE("function argument is an implicit multiplication") {
-    Lexer lx("sin 2x");
-    auto ast = Parser::parse(lx);
+TEST_CASE("Function call with factorial argument") {
+    Lexer lx("sin(x!)");
+    Parser parser;
+    parser.defineVariable("x");
+    auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(sin (* 2 x))");
+    REQUIRE(toLisp(ast[0]) == "(sin (! x))");
 }
 
-TEST_CASE("postfix on a parenthesized function argument") {
-    Lexer lx("sin (2x)!");
-    auto ast = Parser::parse(lx);
+TEST_CASE("Function call without parentheses on factorial number") {
+    Lexer lx("sqrt 4!");
+    Parser parser;
+    auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(! (sin (* 2 x)))");
+    REQUIRE(toLisp(ast[0]) == "(sqrt (! 4))");
 }
 
-TEST_CASE("postfix on a function call itself") {
-    Lexer lx("sin(x)!");
-    auto ast = Parser::parse(lx);
+TEST_CASE("Factorial of function call without parentheses") {
+    Lexer lx("(sqrt 4)!");
+    Parser parser;
+    auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(! (sin x))");
+    REQUIRE(toLisp(ast[0]) == "(! (sqrt 4))");
 }
 
-TEST_CASE("deeply nested mixed operators") {
-    Lexer lx("((a*2)! + -b)^-c");
-    auto ast = Parser::parse(lx);
+TEST_CASE("Implicit multiplication of function and variable") {
+    Lexer lx("sin(x)y");
+    Parser parser;
+    parser.defineVariable("x");
+    parser.defineVariable("y");
+    auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(^ (+ (! (* a 2)) (- b)) (- c))");
+    REQUIRE(toLisp(ast[0]) == "(* (sin x) y)");
 }
 
-TEST_CASE("invalid: infix operator as prefix") {
-    Lexer lx("* 5");
-    auto ast = Parser::parse(lx);
-    REQUIRE_FALSE(!ast.empty());
-}
-
-TEST_CASE("invalid: postfix operator as prefix") {
-    Lexer lx("!5");
-    auto ast = Parser::parse(lx);
-    REQUIRE_FALSE(!ast.empty());
-}
-
-TEST_CASE("invalid: number format with multiple decimals") {
-    Lexer lx("3.14.15");
-    auto ast = Parser::parse(lx);
-    REQUIRE_FALSE(!ast.empty());
-}
-
-TEST_CASE("ambiguity: explicitly post-fixing a function argument") {
-    Lexer lx("sin((2x)!)");
-    auto ast = Parser::parse(lx);
+TEST_CASE("Implicit multiplication of parenthesized function and variable") {
+    Lexer lx("(sin x)y");
+    Parser parser;
+    parser.defineVariable("x");
+    parser.defineVariable("y");
+    auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(sin (! (* 2 x)))");
+    REQUIRE(toLisp(ast[0]) == "(* (sin x) y)");
 }
 
-TEST_CASE("multiplication and unary operator") {
-    Lexer lx("3 * - 4");
-    auto ast = Parser::parse(lx);
+TEST_CASE("Complex expression with unary minus and factorials") {
+    Lexer lx("-sin(x+y)! ^ -cos(z)");
+    Parser parser;
+    parser.defineVariable("x");
+    parser.defineVariable("y");
+    parser.defineVariable("z");
+    auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(* 3 (- 4))");
+    REQUIRE(toLisp(ast[0]) == "(- (^ (! (sin (+ x y))) (- (cos z))))");
+}
+
+TEST_CASE("Multiple statements") {
+    Lexer lx("x = 2\ny = x(x+1)!");
+    Parser parser;
+    auto ast = parser.parse(lx);
+    REQUIRE(ast.size() >= 2);
+    REQUIRE(toLisp(ast.back()) == "(= y (* x (! (+ x 1))))");
 }
 
 #define REQUIRE_PARSER_ERROR(input_string, expected_error_string)   \
     do {                                                            \
-        Parser::clearError();                                       \
         Lexer lx(input_string);                                     \
         if (!lx.getError().empty()){                                \
             REQUIRE(lx.getError() == (expected_error_string));      \
             break;                                                  \
         }                                                           \
-        auto ast = Parser::parse(lx);                               \
+        Parser parser;                                              \
+        auto ast = parser.parse(lx);                                \
         REQUIRE_FALSE(!ast.empty());                                \
-        REQUIRE(Parser::getError() == (expected_error_string));     \
-    } while (0)
+        REQUIRE(parser.getError() == (expected_error_string));      \
+} while (0)
+
 
 
 TEST_CASE("invalid: empty parentheses") {
@@ -523,65 +674,7 @@ TEST_CASE("invalid: empty parentheses") {
     REQUIRE_PARSER_ERROR("()", expected_error);
 }
 
-TEST_CASE("invalid: mismatched parentheses") {
-    std::string expected_error = "Missing closing ')' for parenthesis that started on line 1.\n"
-            "--> at line 1:\n"
-            "    (2 + 3\n"
-            "    ^-- This parenthesis was never closed.\n\n"
-            "Instead, the input ended before the parenthesis was closed.";
-    REQUIRE_PARSER_ERROR("(2 + 3", expected_error);
-}
-
-TEST_CASE("invalid: operator missing rhs inside parens") {
-    std::string expected_error = "Infix operator '+' is missing a right-hand side expression.\n"
-            "--> at line 1:\n"
-            "    (2 + )\n"
-            "       ^-- An expression was expected to follow this operator";
-    REQUIRE_PARSER_ERROR("(2 + )", expected_error);
-}
-
-TEST_CASE("Complex false example") {
-    std::string expected_error =
-            "Expected an argument for function 'cos' but reached the end of the input.\n"
-            "--> at line 1:\n"
-            "    2sin x * 5cos\n"
-            "              ^-- Here";
-    REQUIRE_PARSER_ERROR("2sin x * 5cos", expected_error);
-}
-
-TEST_CASE("Complex false example 2") {
-    std::string expected_error = "Expected an argument for function 'sin', but found '!' instead.\n"
-            "--> at line 1:\n"
-            "    2x^3! ^ sin !\n"
-            "                ^-- Here";
-    REQUIRE_PARSER_ERROR("2x^3! ^ sin !", expected_error);
-}
-
-TEST_CASE("invalid: double infix operator") {
-    std::string expected_error = "Infix operator '+' is missing a right-hand side expression.\n"
-            "--> at line 1:\n"
-            "    1 + * 2\n"
-            "      ^-- An expression was expected to follow this operator";
-    REQUIRE_PARSER_ERROR("1 + * 2", expected_error);
-}
-
-TEST_CASE("invalid: trailing binary operator") {
-    std::string expected_error = "Infix operator '*' is missing a right-hand side expression.\n"
-            "--> at line 1:\n"
-            "    1 + 2 *\n"
-            "          ^-- An expression was expected to follow this operator";
-    REQUIRE_PARSER_ERROR("1 + 2 *", expected_error);
-}
-
-TEST_CASE("invalid: closing parenthesis without opening") {
-    std::string expected_error = "Unexpected token ')'\n"
-            "--> at line 1:\n"
-            "    1 + 2)\n"
-            "         ^-- This should not be here";
-    REQUIRE_PARSER_ERROR("1 + 2)", expected_error);
-}
-
-TEST_CASE("invalid: function with empty parens") {
+TEST_CASE("invalid: empty function call") {
     std::string expected_error = "An expression was expected inside parentheses, but none was found.\n"
             "--> at line 1:\n"
             "    sin()\n"
@@ -589,265 +682,148 @@ TEST_CASE("invalid: function with empty parens") {
     REQUIRE_PARSER_ERROR("sin()", expected_error);
 }
 
-TEST_CASE("invalid: number next to a number") {
-    std::string expected_error = "Missing operator between '3' and '4'.\n"
+TEST_CASE("invalid: missing rhs for infix") {
+    std::string expected_error = "Infix operator '+' is missing a right-hand side expression.\n"
             "--> at line 1:\n"
-            "    3 4\n"
-            "      ^-- An operator was expected here.";
-    REQUIRE_PARSER_ERROR("3 4", expected_error);
+            "    5 +\n"
+            "      ^-- An expression was expected to follow this operator";
+    REQUIRE_PARSER_ERROR("5 +", expected_error);
 }
 
-TEST_CASE("Error: dangling open parenthesis deep nest") {
-    std::string expected_error = "Missing closing ')' for parenthesis that started on line 1.\n"
+TEST_CASE("invalid: missing rhs for infix in parens") {
+    std::string expected_error = "Infix operator '+' is missing a right-hand side expression.\n"
             "--> at line 1:\n"
-            "    (a + (b * c)\n"
-            "    ^-- This parenthesis was never closed.\n\n"
-            "Instead, the input ended before the parenthesis was closed.";
-    REQUIRE_PARSER_ERROR("(a + (b * c)", expected_error);
+            "    (5 + )\n"
+            "       ^-- An expression was expected to follow this operator";
+    REQUIRE_PARSER_ERROR("(5 + )", expected_error);
 }
 
-TEST_CASE("Error: operator abuse plus minus") {
-    std::string expected_error = "Invalid start of an expression. Cannot begin with token '*'.\n"
+TEST_CASE("invalid: expression starts with infix") {
+    std::string expected_error = "Unexpected token '*'\n"
             "--> at line 1:\n"
-            "    a + - * b\n"
-            "          ^-- An expression cannot start here";
-    REQUIRE_PARSER_ERROR("a + - * b", expected_error);
+            "    * 5\n"
+            "    ^-- This should not be here";
+    REQUIRE_PARSER_ERROR("* 5", expected_error);
 }
 
-TEST_CASE("Error: postfix on nothing at start") {
+TEST_CASE("invalid: prefix factorial") {
     std::string expected_error = "Unexpected token '!'\n"
             "--> at line 1:\n"
-            "    !a\n"
+            "    !5\n"
             "    ^-- This should not be here";
-    REQUIRE_PARSER_ERROR("!a", expected_error);
+    REQUIRE_PARSER_ERROR("!5", expected_error);
 }
 
-TEST_CASE("Error: function call missing argument at end") {
-    std::string expected_error =
-            "Expected an argument for function 'cos' but reached the end of the input.\n"
-            "--> at line 1:\n"
-            "    1 + cos\n"
-            "        ^-- Here";
-    REQUIRE_PARSER_ERROR("1 + cos", expected_error);
-}
-
-TEST_CASE("Error: unexpected closing parenthesis deep") {
-    std::string expected_error = "Unexpected token ')'\n"
-            "--> at line 4:\n"
-            "    (a + (b * c)))\n"
-            "                 ^-- This should not be here";
-    REQUIRE_PARSER_ERROR("a=0\nb=0\nc=0\n(a + (b * c)))", expected_error);
-}
-
-TEST_CASE("Error: trailing unary minus") {
-    std::string expected_error = "Infix operator '-' is missing a right-hand side expression.\n"
-            "--> at line 1:\n"
-            "    a - \n"
-            "      ^-- An expression was expected to follow this operator";
-    REQUIRE_PARSER_ERROR("a - ", expected_error);
-}
-
-TEST_CASE("Error: operator after open paren") {
-    std::string expected_error = "Invalid start of an expression. Cannot begin with token '*'.\n"
-            "--> at line 1:\n"
-            "    (* a)\n"
-            "     ^-- An expression cannot start here";
-    REQUIRE_PARSER_ERROR("(* a)", expected_error);
-}
-
-TEST_CASE("multiline expression inside parentheses") {
-    Lexer lx("a = (100 +\n"
-        "     200 +\n"
-        "     300)");
-    auto ast = Parser::parse(lx);
-    REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(= a (+ (+ 100 200) 300))");
-}
-
-TEST_CASE("multiline with nested parentheses") {
-    Lexer lx("a = (1 +\n"
-        "     (2 * 3)\n"
-        "    )");
-    auto ast = Parser::parse(lx);
-    REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(= a (+ 1 (* 2 3)))");
-}
-
-TEST_CASE("multiline function call") {
-    Lexer lx("sin(\n"
-        "  x + y\n"
-        ")");
-    auto ast = Parser::parse(lx);
-    REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(sin (+ x y))");
-}
-
-TEST_CASE("multiline expression with dangling operator") {
-    Lexer lx("a = 10 +\n"
-        "    20");
-    auto ast = Parser::parse(lx);
-    REQUIRE_FALSE(!ast.empty());
-}
-
-TEST_CASE("Error: unclosed parenthesis with newline") {
+TEST_CASE("invalid: missing closing paren") {
     std::string expected_error = "Missing closing ')' for parenthesis that started on line 1.\n"
             "--> at line 1:\n"
-            "    (a +\n"
+            "    (5 + 2\n"
             "    ^-- This parenthesis was never closed.\n\n"
             "Instead, the input ended before the parenthesis was closed.";
-    REQUIRE_PARSER_ERROR("(a +\n"
-                         " b", expected_error);
+    REQUIRE_PARSER_ERROR("(5 + 2", expected_error);
 }
 
-TEST_CASE("multiline with dangling multiplication operator") {
-    Lexer lx("a = 10 *\n"
-        "    2");
-    auto ast = Parser::parse(lx);
-    REQUIRE_FALSE(!ast.empty());
-}
-
-TEST_CASE("multiline with chained operators and precedence") {
-    Lexer lx("a = 10 +\n"
-        "    20 *\n"
-        "    30");
-    auto ast = Parser::parse(lx);
-    REQUIRE_FALSE(!ast.empty());
-}
-
-TEST_CASE("multiline with unary operator on new line") {
-    Lexer lx("a = 10 * \n"
-        "    -2");
-    auto ast = Parser::parse(lx);
-    REQUIRE_FALSE(!ast.empty());
-}
-
-TEST_CASE("parse multiple statements with assignment") {
-    Lexer lx("x = 10 + 5\n2 * x");
-    auto statements = Parser::parse(lx);
-
-    REQUIRE(Parser::getError().empty());
-    REQUIRE(statements.size() == 2);
-
-    REQUIRE(toLisp(statements[0]) == "(= x (+ 10 5))");
-
-    REQUIRE(toLisp(statements[1]) == "(* 2 x)");
-}
-
-TEST_CASE("Error: invalid assignment target") {
-    std::string expected_error = "Invalid target for assignment.\n"
+TEST_CASE("invalid: unexpected closing paren") {
+    std::string expected_error = "Unexpected token ')'\n"
             "--> at line 1:\n"
-            "    5 + 3 = x\n"
-            "          ^-- Cannot assign to this expression.";
-    REQUIRE_PARSER_ERROR("5 + 3 = x", expected_error);
+            "    5 + 2)\n"
+            "         ^-- This should not be here";
+    REQUIRE_PARSER_ERROR("5 + 2)", expected_error);
 }
 
-TEST_CASE("simple division") {
-    Lexer lx("10 / 2");
-    auto ast = Parser::parse(lx);
-    REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(/ 10 2)");
-}
-
-TEST_CASE("mixed addition and division") {
-    Lexer lx("1 + 10 / 2");
-    auto ast = Parser::parse(lx);
-    REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(+ 1 (/ 10 2))");
-}
-
-TEST_CASE("mixed multiplication and division (left-associative)") {
-    Lexer lx("8 / 4 * 2");
-    auto ast = Parser::parse(lx);
-    REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(* (/ 8 4) 2)");
-}
-
-TEST_CASE("unary plus") {
-    Lexer lx("+5");
-    auto ast = Parser::parse(lx);
-    REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(+ 5)");
-}
-
-TEST_CASE("unary plus with binary operator") {
-    Lexer lx("10 + +5");
-    auto ast = Parser::parse(lx);
-    REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(+ 10 (+ 5))");
-}
-
-TEST_CASE("blank lines between statements") {
-    Lexer lx("x = 1\n\ny = 2");
-    auto statements = Parser::parse(lx);
-    REQUIRE(Parser::getError().empty());
-    REQUIRE(statements.size() == 2);
-    REQUIRE(toLisp(statements[0]) == "(= x 1)");
-    REQUIRE(toLisp(statements[1]) == "(= y 2)");
-}
-
-TEST_CASE("complex implicit multiplication chain") {
-    Lexer lx("2x(a+b)!");
-    auto ast = Parser::parse(lx);
-    REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(* (* 2 x) (! (+ a b)))");
-}
-
-TEST_CASE("implicit multiplication with postfixed parenthesis and variable") {
-    Lexer lx("(x)!y");
-    auto ast = Parser::parse(lx);
-    REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(* (! x) y)");
-}
-
-TEST_CASE("function argument is a negative number") {
-    Lexer lx("sin(-1)");
-    auto ast = Parser::parse(lx);
-    REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(sin (- 1))");
-}
-
-TEST_CASE("function as an operand") {
-    Lexer lx("1 + sin(x)");
-    auto ast = Parser::parse(lx);
-    REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(+ 1 (sin x))");
-}
-
-TEST_CASE("Error: invalid assignment to function call") {
-    std::string expected_error = "Invalid target for assignment.\n"
+TEST_CASE("invalid: function with no arg at eof") {
+    std::string expected_error = "Expected an argument for function 'sin' but reached the end of the input.\n"
             "--> at line 1:\n"
-            "    sin(x) = 5\n"
-            "           ^-- Cannot assign to this expression.";
-    REQUIRE_PARSER_ERROR("sin(x) = 5", expected_error);
+            "    sin\n"
+            "    ^-- Here";
+    REQUIRE_PARSER_ERROR("sin", expected_error);
 }
 
-TEST_CASE("Error: invalid assignment to parenthesized expression") {
-    std::string expected_error = "Invalid target for assignment.\n"
+TEST_CASE("invalid: function after number with no arg at eof") {
+    std::string expected_error = "Expected an argument for function 'sin' but reached the end of the input.\n"
             "--> at line 1:\n"
-            "    (x+1) = 5\n"
-            "          ^-- Cannot assign to this expression.";
-    REQUIRE_PARSER_ERROR("(x+1) = 5", expected_error);
+            "    5 sin\n"
+            "      ^-- Here";
+    REQUIRE_PARSER_ERROR("5 sin", expected_error);
 }
 
-TEST_CASE("Error: operator abuse with division") {
-    std::string expected_error = "Infix operator '*' is missing a right-hand side expression.\n"
+TEST_CASE("invalid: missing operator") {
+    std::string expected_error = "Missing operator between '5' and '2'.\n"
             "--> at line 1:\n"
-            "    x * / y\n"
-            "      ^-- An expression was expected to follow this operator";
-    REQUIRE_PARSER_ERROR("x * / y", expected_error);
+            "    5 2\n"
+            "      ^-- An operator was expected here.";
+    REQUIRE_PARSER_ERROR("5 2", expected_error);
 }
 
-TEST_CASE("Error: invalid character token from lexer") {
-    std::string expected_error = "Unexpected character \"@\" at line 1, column 2.\n"
-            "    x @ y\n"
-            "      ^-- This should not be here.";
-    REQUIRE_PARSER_ERROR("x @ y", expected_error);
-}
-
-TEST_CASE("Error: assignment missing right-hand side") {
+TEST_CASE("invalid: missing rhs for assignment") {
     std::string expected_error = "Assignment operator '=' is missing a right-hand side expression.\n"
             "--> at line 1:\n"
-            "    x = \n"
+            "    x =\n"
             "      ^-- An expression was expected to follow the assignment.";
-    REQUIRE_PARSER_ERROR("x = ", expected_error);
+    REQUIRE_PARSER_ERROR("x =", expected_error);
+}
+
+TEST_CASE("invalid: assignment to non-lvalue number") {
+    std::string expected_error = "Invalid target for assignment.\n"
+            "--> at line 1:\n"
+            "    5 = x\n"
+            "      ^-- Cannot assign to this expression.";
+    REQUIRE_PARSER_ERROR("5 = x", expected_error);
+}
+
+TEST_CASE("invalid: assignment to non-lvalue expression") {
+    std::string expected_error = "Invalid target for assignment.\n"
+            "--> at line 1:\n"
+            "    (x+1) = y\n"
+            "          ^-- Cannot assign to this expression.";
+    REQUIRE_PARSER_ERROR("(x+1) = y", expected_error);
+}
+
+TEST_CASE("invalid: infix followed by infix") {
+    std::string expected_error = "Infix operator '+' is missing a right-hand side expression.\n"
+            "--> at line 1:\n"
+            "    5 + * 3\n"
+            "      ^-- An expression was expected to follow this operator";
+    REQUIRE_PARSER_ERROR("5 + * 3", expected_error);
+}
+
+TEST_CASE("invalid: multiline without parens") {
+    std::string expected_error = "Infix operator '+' is missing a right-hand side expression.\n"
+            "--> at line 1:\n"
+            "    5 +\n"
+            "      ^-- An expression was expected to follow this operator";
+    REQUIRE_PARSER_ERROR("5 +\n 2", expected_error);
+}
+
+TEST_CASE("invalid: undefined variable in assignment") {
+    std::string expected_error = "Use of undefined variable 'x'.\n"
+            "--> at line 1:\n"
+            "    y = x + z\n"
+            "        ^-- This variable has not been defined";
+    REQUIRE_PARSER_ERROR("y = x + z", expected_error);
+}
+
+TEST_CASE("invalid: undefined variable in function call") {
+    std::string expected_error = "Use of undefined variable 'y'.\n"
+            "--> at line 1:\n"
+            "    sin y\n"
+            "        ^-- This variable has not been defined";
+    REQUIRE_PARSER_ERROR("sin y", expected_error);
+}
+
+TEST_CASE("invalid: prefix operator missing rhs") {
+    std::string expected_error = "Prefix operator '+' is missing an expression on its right-hand side.\n"
+            "--> at line 1:\n"
+            "    +\n"
+            "    ^-- An expression was expected to follow this operator";
+    REQUIRE_PARSER_ERROR("+", expected_error);
+}
+
+TEST_CASE("invalid: missing closing paren in implicit multiplication") {
+    std::string expected_error = "Missing closing ')' for parenthesis that started on line 1.\n"
+            "--> at line 1:\n"
+            "    5(2+3\n"
+            "     ^-- This parenthesis was never closed.\n\n"
+            "Instead, the input ended before the parenthesis was closed.";
+    REQUIRE_PARSER_ERROR("5(2+3", expected_error);
 }
