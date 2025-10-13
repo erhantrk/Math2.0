@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include <iostream>
 #include <regex>
 #include <string>
 #include <vector>
@@ -21,7 +20,7 @@ public:
 
     [[nodiscard]] std::string getError() const;
 
-    [[nodiscard]] const Token &peek() const;
+    [[nodiscard]] const Token &peek(int n = 0) const;
 
     Token next();
 

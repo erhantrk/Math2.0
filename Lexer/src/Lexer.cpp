@@ -11,6 +11,8 @@ Lexer::Lexer(const std::string &input) {
         {Type::Word, std::regex(R"([a-zA-Z_]\w*)")},
         {Type::Newline, std::regex(R"(\n)")},
         {Type::Skip, std::regex(R"([ \t\r]+)")},
+        {Type::Comma, std::regex(R"(,)")},
+
     };
 
     size_t position = 0;
@@ -69,10 +71,10 @@ Lexer::Lexer(const std::string &input) {
     this->tokens = std::vector<Token>{this->tokens.rbegin(), this->tokens.rend()};
 }
 
-const Token &Lexer::peek() const {
-    if (tokens.empty()) return Eof;
-    const Token &token = tokens.back();
-    return token;
+const Token &Lexer::peek(int n) const {
+    if (tokens.size() <= n)
+        return Eof;
+    return tokens[tokens.size() - 1 - n];
 }
 
 Token Lexer::next() {

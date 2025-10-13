@@ -8,11 +8,15 @@
 #include "../../Lexer/inc/Lexer.hpp"
 
 struct Node {
-    enum class Type { Number, Variable, Operand, Function, Assignment };
+    enum class Type { Number, Variable, Operand, Function, Assignment, FunctionAssignment, Parameter};
 
     Type type;
     std::string value;
     std::vector<std::unique_ptr<Node> > children;
 
     static std::unique_ptr<Node> createNode(const Token &token);
+
+    template<typename Func>
+    void apply(Func fun) {fun(this); for (const auto& child : children) if (child) child->apply(fun);}
 };
+
