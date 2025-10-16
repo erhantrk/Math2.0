@@ -4,22 +4,11 @@
 
 #pragma once
 #include <unordered_set>
+#include <unordered_map>
 #include <vector>
 
 #include "../../Lexer/inc/Lexer.hpp"
 #include "../../Node/inc/Node.hpp"
-
-struct PairHasher {
-    std::size_t operator()(const std::pair<std::string, std::vector<std::string>>& p) const {
-        const std::size_t hash1 = std::hash<std::string>{}(p.first);
-        std::size_t set_hash = 0;
-        for (const auto& s : p.second) {
-            set_hash ^= std::hash<std::string>{}(s) + 0x9e3779b9 + (set_hash << 6) + (set_hash >> 2);
-        }
-        return hash1 ^ (set_hash << 1);
-    }
-};
-
 
 class Parser {
     std::unique_ptr<Node> parseExpression(Lexer &lexer, int min_bp);
@@ -33,15 +22,23 @@ class Parser {
 
     std::unique_ptr<Node> parseStatement(Lexer &lexer);
     [[nodiscard]] bool isFunctionDefinition(const Lexer &lexer) const;
-    std::pair<std::string, std::vector<std::string>> parseFunctionDefinition(Lexer &lexer);
+    static std::pair<std::string, std::vector<std::string>> parseFunctionDefinition(Lexer &lexer);
+    int getNextComma(const Lexer& lexer);
 
     std::string error;
     int parenthesesLevel = 0;
+    bool isParsingFunctionCall = false;
     std::unordered_set<std::string> variables = {"e", "pi"};
-    std::unordered_set<std::pair<std::string, std::vector<std::string>>, PairHasher> functions = {};
+    std::unordered_map<std::string, std::vector<std::string>> functions;
+
+    static inline const std::unordered_map<std::string, std::vector<std::string>> preDefinedFunctions = {
+        {"sin", {"0-x"}}, {"cos", {"0-x"}}, {"tan", {"0-x"}},
+        {"log", {"0-x"}}, {"ln", {"0-x"}}, {"sqrt", {"0-x"}},
+        {"abs", {"0-x"}}, {"atan2", {"0-x", "1-y"}}
+    };
 
 public:
-    static bool isPreDefinedFunction(const Token &token);
+    [[nodiscard]] bool isDefinedFunction(const Token &token) const;
 
     std::vector<std::unique_ptr<Node> > parse(Lexer &lexer);
 

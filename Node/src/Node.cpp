@@ -5,10 +5,10 @@
 #include "../inc/Node.hpp"
 #include "../../Parser/inc/Parser.hpp"
 
-std::unique_ptr<Node> Node::createNode(const Token &token) {
+std::unique_ptr<Node> Node::createNode(const Token &token, const Parser& parser) {
     switch (token.type) {
         case Token::Type::Word:
-            if (Parser::isPreDefinedFunction(token))
+            if (parser.isDefinedFunction(token))
                 return std::make_unique<Node>(Node{Node::Type::Function, token.value});;
             return std::make_unique<Node>(Node{Node::Type::Variable, token.value});
         case Token::Type::Number: return std::make_unique<Node>(Node{Node::Type::Number, token.value});

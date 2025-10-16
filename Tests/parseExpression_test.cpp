@@ -22,6 +22,7 @@ static void toLispImpl(const Node *n, std::ostringstream &out) {
             out << n->value;
             break;
         case Node::Type::Variable:
+        case Node::Type::Parameter:
             out << n->value;
             break;
         case Node::Type::Assignment:
@@ -44,6 +45,7 @@ static void toLispImpl(const Node *n, std::ostringstream &out) {
             }
             break;
         case Node::Type::Function:
+        case Node::Type::FunctionAssignment:
             out << "(" << n->value;
             if (!n->children.empty()) {
                 out << " ";
@@ -650,6 +652,115 @@ TEST_CASE("Multiple statements") {
     REQUIRE(ast.size() >= 2);
     REQUIRE(toLisp(ast.back()) == "(= y (* x (! (+ x 1))))");
 }
+
+TEST_CASE("Simple function definition") {
+    Lexer lx("f(x)=x^2");
+    Parser parser;
+    auto ast = parser.parse(lx);
+    REQUIRE(ast.size() == 1);
+    REQUIRE(toLisp(ast.back()) == "(f (^ 0-x 2))");
+}
+
+TEST_CASE("Multi parameter function definition") {
+    Lexer lx("f(x,y,z)=x*y*z");
+    Parser parser;
+    auto ast = parser.parse(lx);
+    REQUIRE(ast.size() == 1);
+    REQUIRE(toLisp(ast.back()) == "(f (* (* 0-x 1-y) 2-z))");
+}
+
+TEST_CASE("Simple function call") {
+    Lexer lx("f(x)=x\nf(2)");
+    Parser parser;
+    auto ast = parser.parse(lx);
+    REQUIRE(ast.size() == 2);
+    REQUIRE(toLisp(ast.back()) == "(f 2)");
+}
+
+TEST_CASE("Simple function call wo parentheses") {
+    Lexer lx("f(x)=x\nf 2");
+    Parser parser;
+    auto ast = parser.parse(lx);
+    REQUIRE(ast.size() == 2);
+    REQUIRE(toLisp(ast.back()) == "(f 2)");
+}
+
+TEST_CASE("Multi parameter function call") {
+    Lexer lx("f(x,y,z)=x*y*z\nf(1,2,3)");
+    Parser parser;
+    auto ast = parser.parse(lx);
+    REQUIRE(ast.size() == 2);
+    REQUIRE(toLisp(ast.back()) == "(f 1 2 3)");
+}
+
+TEST_CASE("Multi parameter function call with newline") {
+    Lexer lx("f(x,y,z)=x*y*z\nf(1,\n"
+             "2,\n"
+             "3)");
+    Parser parser;
+    auto ast = parser.parse(lx);
+    REQUIRE(ast.size() == 2);
+    REQUIRE(toLisp(ast.back()) == "(f 1 2 3)");
+}
+
+TEST_CASE("Multi parameter function call with newline complex") {
+    Lexer lx("f(x,y,z)=x*y*z\nf(1\n"
+             ",2,\n"
+             "3)");
+    Parser parser;
+    auto ast = parser.parse(lx);
+    REQUIRE(ast.size() == 2);
+    REQUIRE(toLisp(ast.back()) == "(f 1 2 3)");
+}
+
+TEST_CASE("Function call with parentheses") {
+    Lexer lx("f(x, y) = x + y\n f((3+5), (2^4))");
+    Parser parser;
+    auto ast = parser.parse(lx);
+    REQUIRE(ast.size() == 2);
+    REQUIRE(toLisp(ast.back()) == "(f (+ 3 5) (^ 2 4))");
+}
+
+TEST_CASE("Function call with function parameter") {
+    Lexer lx("f(x, y) = x + y\n g(x, y) = x * y\n f(g(1,2), g(2,3))");
+    Parser parser;
+    auto ast = parser.parse(lx);
+    REQUIRE(ast.size() == 3);
+    REQUIRE(toLisp(ast.back()) == "(f (g 1 2) (g 2 3))");
+}
+
+TEST_CASE("Function calling on itself multiple times") {
+    Lexer lx("f(x, y) = x + y\n f(f(f(1, 2), 3), f(4, 5))");
+    Parser parser;
+    auto ast = parser.parse(lx);
+    REQUIRE(ast.size() == 2);
+    REQUIRE(toLisp(ast.back()) == "(f (f (f 1 2) 3) (f 4 5))");
+}
+
+TEST_CASE("Function calling inside function with newlines") {
+    Lexer lx("f(x, y) = x + y\n"
+             "f(f(1,\n"
+             "2),\n"
+             "f(3,\n"
+             "f(4,\n"
+             "5)))");
+    Parser parser;
+    auto ast = parser.parse(lx);
+    REQUIRE(ast.size() == 2);
+    REQUIRE(toLisp(ast.back()) == "(f (f 1 2) (f 3 (f 4 5)))");
+}
+
+TEST_CASE("Function with multiple arguments and expressions") {
+    Lexer lx("atan2(y*2, x/3)");
+    Parser parser;
+    parser.defineVariable("x");
+    parser.defineVariable("y");
+    auto ast = parser.parse(lx);
+    REQUIRE(!ast.empty());
+    REQUIRE(toLisp(ast[0]) == "(atan2 (* y 2) (/ x 3))");
+}
+
+
 
 #define REQUIRE_PARSER_ERROR(input_string, expected_error_string)   \
     do {                                                            \

@@ -1,8 +1,10 @@
 #include "../inc/Lexer.hpp"
+
+#include <iostream>
 #include <sstream>
+#include <utility>
 
 using Type = Token::Type;
-
 
 Lexer::Lexer(const std::string &input) {
     std::vector<std::pair<Type, std::regex> > token_specification = {
@@ -12,7 +14,6 @@ Lexer::Lexer(const std::string &input) {
         {Type::Newline, std::regex(R"(\n)")},
         {Type::Skip, std::regex(R"([ \t\r]+)")},
         {Type::Comma, std::regex(R"(,)")},
-
     };
 
     size_t position = 0;
@@ -71,7 +72,7 @@ Lexer::Lexer(const std::string &input) {
     this->tokens = std::vector<Token>{this->tokens.rbegin(), this->tokens.rend()};
 }
 
-const Token &Lexer::peek(int n) const {
+Token Lexer::peek(int n) const {
     if (tokens.size() <= n)
         return Eof;
     return tokens[tokens.size() - 1 - n];
@@ -84,8 +85,14 @@ Token Lexer::next() {
     return token;
 }
 
-void Lexer::skip() {
+void Lexer::skip(int n) {
+    for (size_t i = 0; i < n; i++) {
     tokens.pop_back();
+    }
+}
+
+Lexer Lexer::getSubLexer(int pos) {
+    return Lexer(std::vector<Token>{tokens.begin() + static_cast<int>(tokens.size()) - pos, tokens.end()});
 }
 
 void Lexer::addToken(const Token &token) {
@@ -94,4 +101,35 @@ void Lexer::addToken(const Token &token) {
 
 std::string Lexer::getError() const {
     return error;
+}
+
+Lexer::Lexer(const std::vector<Token>& tokens)
+    : tokens(tokens) {
+}
+
+int Lexer::getIndexFirstInstance(Token::Type type) {
+    for (int i = static_cast<int>(tokens.size()) - 1; i >= 0; --i) {
+        if (tokens[i].type == type) {
+            return static_cast<int>(tokens.size()) - i - 1;
+        }
+    }
+    return -1;
+}
+
+void Lexer::removeToken(int pos) {
+    tokens.erase(tokens.begin() + static_cast<int>(tokens.size()) - pos - 1);
+}
+
+int Lexer::getClosingParenthesesIndex() const {
+    int plCnt = 0;
+    for (int i = static_cast<int>(tokens.size()) - 1; i >= 0; --i) {
+        if (tokens[i].type == Type::Symbol && tokens[i].value[0] == '(') {
+            plCnt++;
+        }
+        if (tokens[i].type == Type::Symbol && tokens[i].value[0] == ')') {
+            if (!plCnt--)
+                return static_cast<int>(tokens.size()) - i - 1;
+        }
+    }
+    return -1;
 }

@@ -116,6 +116,11 @@ std::unique_ptr<Node> Parser::parseStatement(Lexer &lexer) {
         definition_node->apply([&](Node* node) {
             if (node->type == Node::Type::Variable && std::ranges::find(function.second, node->value) != function.second.end()) {
                 node->type = Node::Type::Parameter;
+                auto it = std::ranges::find(function.second, node->value);
+                if (it != function.second.end()) {
+                    auto index = std::distance(function.second.begin(), it);
+                    node->value = std::to_string(index) + "-" + node->value;
+                }
             }
         });
         return definition_node;
@@ -146,18 +151,20 @@ std::unique_ptr<Node> Parser::parseLhs(Lexer &lexer, Token &outToken) { // NOLIN
     lexer.skip();
 
     /* Special case we need to skip the newline */
-    if (Token::isNewline(token)) *const_cast<Token *>(&token) = lexer.next();
+    while (Token::isNewline(token)) *const_cast<Token *>(&token) = lexer.next();
 
     std::unique_ptr<Node> lhs = nullptr;
 
     if (token.type == Token::Type::Symbol && token.value[0] == '(') {
         lhs = parseParentheses(lexer, token);
-    } else if (token.type == Token::Type::Word && isPreDefinedFunction(token)) {
+    } else if (token.type == Token::Type::Word && isDefinedFunction(token)) {
+        parenthesesLevel++;
         lhs = parseFunction(lexer, token);
+        parenthesesLevel--;
     } else if (Token::isTokenPreFix(token)) {
         lhs = parsePrefixToken(lexer, token);
     } else {
-        lhs = Node::createNode(token);
+        lhs = Node::createNode(token, *this);
     }
 
     outToken = token;
@@ -234,24 +241,78 @@ std::unique_ptr<Node> Parser::parseParentheses(Lexer &lexer, const Token &token)
 }
 
 std::unique_ptr<Node> Parser::parseFunction(Lexer &lexer, const Token &token) { // NOLINT(*-no-recursion)
-    auto [lhs_bp, rhs_bp] = getBindingPower(token);
-    std::unique_ptr<Node> op = Node::createNode(token);
-    if (lexer.peek().type == Token::Type::Symbol && lexer.peek().value[0] == '(') {
-        rhs_bp = 100;
+    std::unique_ptr<Node> func = Node::createNode(token, *this);
+
+    int argCount = 0;
+    if (preDefinedFunctions.contains(token.value)) {
+        argCount = static_cast<int>(preDefinedFunctions.at(token.value).size());
+    }else if (functions.contains(token.value)) {
+        argCount = static_cast<int>(functions.at(token.value).size());
     }
-    std::unique_ptr<Node> arg = parseExpression(lexer, rhs_bp);
-    if (arg == nullptr) {
-        if (error.empty())
-            error = getNoArgError(lexer, token);
-        return nullptr;
+
+    const Token &pl = lexer.peek();
+    if (pl.type == Token::Type::Symbol && pl.value[0] == '(') {  /* Standard form */
+        lexer.skip();
+        while (lexer.peek().type == Token::Type::Newline) lexer.skip();
+        int prIndex = lexer.getClosingParenthesesIndex();
+        if (prIndex < 0) {
+            return nullptr;
+        }
+        Lexer argLexer = lexer.getSubLexer(prIndex);
+        if (!prIndex) {
+            if (error.empty())
+                error = getEmptyParenError(pl);
+            return nullptr;
+        }
+        lexer.removeToken(prIndex);
+        if (argCount > 1) {
+            for (int i = 1; i < argCount; ++i) {
+                int commaIndex = getNextComma(argLexer);
+                if (commaIndex < 0) {
+                    return nullptr;
+                }
+                Lexer argPartLexer = argLexer.getSubLexer(commaIndex);
+                argLexer.skip(commaIndex + 1);
+                std::unique_ptr<Node> argPart = parseExpression(argPartLexer, 0);
+                if (argPart == nullptr) {
+                    return nullptr;
+                }
+                func->children.push_back(std::move(argPart));
+            }
+        }
+        std::unique_ptr<Node> arg = parseExpression(argLexer, 0);
+        if (arg == nullptr) {
+            return nullptr;
+        }
+        func->children.push_back(std::move(arg));
+        lexer.skip(prIndex);
+        if (lexer.peek().type == Token::Type::Number || lexer.peek().type == Token::Type::Word) {
+            Token temp{Token::Type::Symbol, "*", token.line, token.pos, token.line_content};
+            lexer.addToken(temp);
+        }
     }
-    op->children.push_back(std::move(arg));
-    return std::move(op);
+    else { /* Prefix like form */
+        if (argCount>1) {
+            if (error.empty())
+                error = "Multi argument function called without parentheses";
+            return nullptr;
+        }
+        auto&& [lhs_bp, rhs_bp] = getBindingPower(token);
+        std::unique_ptr<Node> expr = parseExpression(lexer, rhs_bp);
+        if (expr == nullptr) {
+            if (error.empty())
+                error = getNoArgError(lexer, token);
+            return nullptr;
+        }
+        func->children.push_back(std::move(expr));
+    }
+
+    return std::move(func);
 }
 
 std::unique_ptr<Node> Parser::parsePrefixToken(Lexer &lexer, const Token &token) { // NOLINT(*-no-recursion)
-    auto [lhs_bp, rhs_bp] = getBindingPower(token, true);
-    std::unique_ptr<Node> op = Node::createNode(token);
+    auto&& [lhs_bp, rhs_bp] = getBindingPower(token, true);
+    std::unique_ptr<Node> op = Node::createNode(token, *this);
     std::unique_ptr<Node> arg = parseExpression(lexer, rhs_bp);
     if (arg == nullptr) {
         if (!error.empty())
@@ -272,15 +333,15 @@ std::unique_ptr<Node> Parser::parseOperator(Lexer &lexer, const Token &token, bo
     if (lexer.peek().type == Token::Type::Symbol) {
         if (lexer.peek().value[0] == '(') {
             Token temp{Token::Type::Symbol, "*", token.line, lexer.peek().pos - 1, token.line_content};
-            op = Node::createNode(temp);
+            op = Node::createNode(temp, *this);
             lexer.addToken(temp);
             isImplicit = true;
         } else {
-            op = Node::createNode(lexer.peek());
+            op = Node::createNode(lexer.peek(), *this);
         }
     } else if (lexer.peek().type == Token::Type::Word && token.type == Token::Type::Number) {
         Token temp{Token::Type::Symbol, "*", token.line, lexer.peek().pos - 1, token.line_content};
-        op = Node::createNode(temp);
+        op = Node::createNode(temp, *this);
         lexer.addToken(temp);
         isImplicit = true;
     } else {
@@ -296,6 +357,19 @@ std::unique_ptr<Node> Parser::parseOperator(Lexer &lexer, const Token &token, bo
     return std::move(op);
 }
 
+std::pair<std::string, std::vector<std::string>> Parser::parseFunctionDefinition(Lexer &lexer) { // NOLINT(*-no-recursion)
+    std::string functionName = lexer.next().value;
+    lexer.skip();
+    std::vector<std::string> tempVariables;
+    while (true) {
+        const auto& token = lexer.next();
+        if (token.type == Token::Type::Word)
+            tempVariables.push_back(token.value);
+        else if (token.type == Token::Type::Symbol && token.value[0] == '=') break;
+    }
+    return std::make_pair(functionName, tempVariables);
+}
+
 bool Parser::isFunctionDefinition(const Lexer &lexer) const {
     if (lexer.peek().type != Token::Type::Word || variables.contains(lexer.peek().value)) return false;
     if (lexer.peek(1).type != Token::Type::Symbol || lexer.peek(1).value[0] != '(') return false;
@@ -309,11 +383,27 @@ bool Parser::isFunctionDefinition(const Lexer &lexer) const {
     return false;
 }
 
-bool Parser::isPreDefinedFunction(const Token &token) {
-    static const std::unordered_set<std::string> preDefinedFunctions = {
-        "sin", "cos", "tan", "log", "ln", "sqrt", "abs"
-    };
-    return preDefinedFunctions.contains(token.value);
+bool Parser::isDefinedFunction(const Token &token) const {
+    return preDefinedFunctions.contains(token.value) || functions.contains(token.value);
+}
+
+int Parser::getNextComma(const Lexer& lexer) {
+    int skip = 0;
+    for (int i = 0; ;) {
+        if (lexer.peek(i).type == Token::Type::Eof) return -1;
+        if (lexer.peek(i).type == Token::Type::Word) {
+            if (functions.contains(lexer.peek(i).value)) {
+                skip += functions.at(lexer.peek(i).value).size() - 1;
+            } else if (preDefinedFunctions.contains(lexer.peek(i).value)) {
+                skip += preDefinedFunctions.at(lexer.peek(i).value).size() - 1;
+            }
+        }
+        if (lexer.peek(i).type == Token::Type::Comma) {
+            if (skip == 0) return i;
+            skip--;
+        }
+        i++;
+    }
 }
 
 static bool areAllVariablesDefined(const std::unique_ptr<Node> &node, const std::unordered_set<std::string> &definedVariables, // NOLINT(*-no-recursion)
@@ -336,19 +426,6 @@ static bool areAllVariablesDefined(const std::unique_ptr<Node> &node, const std:
     }
 
     return true;
-}
-
-std::pair<std::string, std::vector<std::string>> Parser::parseFunctionDefinition(Lexer &lexer) { // NOLINT(*-no-recursion)
-    std::string functionName = lexer.next().value;
-    lexer.skip();
-    std::vector<std::string> tempVariables;
-    while (true) {
-        const auto& token = lexer.next();
-        if (token.type == Token::Type::Word)
-            tempVariables.push_back(token.value);
-        else if (token.type == Token::Type::Symbol && token.value[0] == '=') break;
-    }
-    return std::make_pair(functionName, tempVariables);
 }
 
 std::string Parser::getError() {

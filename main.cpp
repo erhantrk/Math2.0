@@ -5,7 +5,7 @@
 #include "Parser/inc/Parser.hpp"
 
 int main() {
-    Lexer lexer("f(x) = x + y");
+    Lexer lexer("(1 + \n \n 2)");
     if (!lexer.getError().empty()) {
         std::cerr << lexer.getError() << std::endl;
         return 1;

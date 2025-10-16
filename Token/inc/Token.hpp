@@ -6,7 +6,7 @@
 #include <string>
 
 struct Token {
-    enum class Type { Number, Symbol, Word, Skip, Newline, Comma, Eof };
+    enum class Type { Number, Symbol, Word, Skip, Newline, Eof, Comma};
 
     Type type;
     std::string value;
