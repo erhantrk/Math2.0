@@ -23,7 +23,7 @@ class Parser {
     std::unique_ptr<Node> parseStatement(Lexer &lexer);
     [[nodiscard]] bool isFunctionDefinition(const Lexer &lexer) const;
     static std::pair<std::string, std::vector<std::string>> parseFunctionDefinition(Lexer &lexer);
-    int getNextComma(const Lexer& lexer);
+    int getNextComma(const Lexer& lexer) const;
 
     std::string error;
     int parenthesesLevel = 0;

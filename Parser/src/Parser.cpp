@@ -56,7 +56,7 @@ std::vector<std::unique_ptr<Node> > Parser::parse(Lexer &lexer) {
 
         const Token &next = lexer.peek();
         if (next.type != Token::Type::Eof && !Token::isNewline(next)) {
-            error = getUnexpectedTokenError(lexer);
+            error = ParserError::UnexpectedToken(lexer);
             statements.clear();
             return statements;
         }
@@ -74,26 +74,26 @@ std::unique_ptr<Node> Parser::parseStatement(Lexer &lexer) {
 
     auto lhs = parseExpression(lexer, 0);
     if (!lhs) {
-        if (lexer.peek().type != Token::Type::Eof && error.empty()) error = getUnexpectedTokenError(lexer);
+        if (lexer.peek().type != Token::Type::Eof && error.empty()) error = ParserError::UnexpectedToken(lexer);
         return nullptr;
     }
 
     if (lexer.peek().value == "=" && !isFunctionDef) {
         if (lhs->type != Node::Type::Variable) {
-            error = getInvalidAssignmentTargetError(lexer.peek());
+            error = ParserError::InvalidAssignmentTarget(lexer.peek());
             return nullptr;
         }
         const Token &as = lexer.next();
         auto rhs = parseExpression(lexer, 0);
         if (!rhs) {
             if (error.empty())
-                error = getMissingAssignmentError(as);
+                error = ParserError::MissingAssignment(as);
             return nullptr;
         }
         std::string undefinedVar;
         if (!areAllVariablesDefined(rhs, variables, undefinedVar)) {
             if (error.empty())
-                error = getUndefinedVariableError(as, undefinedVar);
+                error = ParserError::UndefinedVariable(as, undefinedVar);
             return nullptr;
         }
 
@@ -106,7 +106,7 @@ std::unique_ptr<Node> Parser::parseStatement(Lexer &lexer) {
 
     if (!areAllVariablesDefined(lhs, variables, undefinedVar, function.second)) {
         if (error.empty())
-            error = getUndefinedVariableError(tmp, undefinedVar);
+            error = ParserError::UndefinedVariable(tmp, undefinedVar);
         return nullptr;
     }
     if (isFunctionDef) {
@@ -158,9 +158,7 @@ std::unique_ptr<Node> Parser::parseLhs(Lexer &lexer, Token &outToken) { // NOLIN
     if (token.type == Token::Type::Symbol && token.value[0] == '(') {
         lhs = parseParentheses(lexer, token);
     } else if (token.type == Token::Type::Word && isDefinedFunction(token)) {
-        parenthesesLevel++;
         lhs = parseFunction(lexer, token);
-        parenthesesLevel--;
     } else if (Token::isTokenPreFix(token)) {
         lhs = parsePrefixToken(lexer, token);
     } else {
@@ -203,7 +201,7 @@ std::unique_ptr<Node> Parser::parseRhs(Lexer &lexer, std::unique_ptr<Node>& lhs,
         auto rhs = parseExpression(lexer, rhs_bp);
         if (rhs == nullptr) {
             if (error.empty())
-                error = getMissingRhsError(opToken, isImplicit);
+                error = ParserError::MissingRhs(opToken, isImplicit);
             return nullptr;
         }
         op->children.push_back(std::move(lhs));
@@ -221,16 +219,16 @@ std::unique_ptr<Node> Parser::parseParentheses(Lexer &lexer, const Token &token)
         if (!error.empty())
             return nullptr;
         if (!lhs)
-            error = getInvalidStartError(lexer);
+            error = ParserError::InvalidStart(lexer);
         else
-            error = getMissingParenError(lexer, token);
+            error = ParserError::MissingParen(lexer, token);
         return nullptr;
     }
     lexer.skip();
     parenthesesLevel--;
     if (!lhs) {
         if (error.empty())
-            error = getEmptyParenError(token);
+            error = ParserError::EmptyParen(token);
         return std::move(lhs);
     }
     if (lexer.peek().type == Token::Type::Number || lexer.peek().type == Token::Type::Word) {
@@ -252,6 +250,7 @@ std::unique_ptr<Node> Parser::parseFunction(Lexer &lexer, const Token &token) { 
 
     const Token &pl = lexer.peek();
     if (pl.type == Token::Type::Symbol && pl.value[0] == '(') {  /* Standard form */
+        parenthesesLevel++;
         lexer.skip();
         while (lexer.peek().type == Token::Type::Newline) lexer.skip();
         int prIndex = lexer.getClosingParenthesesIndex();
@@ -261,7 +260,7 @@ std::unique_ptr<Node> Parser::parseFunction(Lexer &lexer, const Token &token) { 
         Lexer argLexer = lexer.getSubLexer(prIndex);
         if (!prIndex) {
             if (error.empty())
-                error = getEmptyParenError(pl);
+                error = ParserError::EmptyParen(pl);
             return nullptr;
         }
         lexer.removeToken(prIndex);
@@ -269,6 +268,8 @@ std::unique_ptr<Node> Parser::parseFunction(Lexer &lexer, const Token &token) { 
             for (int i = 1; i < argCount; ++i) {
                 int commaIndex = getNextComma(argLexer);
                 if (commaIndex < 0) {
+                    if (error.empty())
+                        error = ParserError::NotEnoughArguments(token, argCount);
                     return nullptr;
                 }
                 Lexer argPartLexer = argLexer.getSubLexer(commaIndex);
@@ -280,6 +281,10 @@ std::unique_ptr<Node> Parser::parseFunction(Lexer &lexer, const Token &token) { 
                 func->children.push_back(std::move(argPart));
             }
         }
+        if (argLexer.getIndexFirstInstance(Token::Type::Comma) >= 0) {
+            if (error.empty())
+                error = ParserError::TooManyArguments(token, argCount);;
+        }
         std::unique_ptr<Node> arg = parseExpression(argLexer, 0);
         if (arg == nullptr) {
             return nullptr;
@@ -290,18 +295,19 @@ std::unique_ptr<Node> Parser::parseFunction(Lexer &lexer, const Token &token) { 
             Token temp{Token::Type::Symbol, "*", token.line, token.pos, token.line_content};
             lexer.addToken(temp);
         }
+        parenthesesLevel--;
     }
     else { /* Prefix like form */
         if (argCount>1) {
             if (error.empty())
-                error = "Multi argument function called without parentheses";
+                error = ParserError::MultiArgumentCalledWoParentheses(token, argCount);
             return nullptr;
         }
         auto&& [lhs_bp, rhs_bp] = getBindingPower(token);
         std::unique_ptr<Node> expr = parseExpression(lexer, rhs_bp);
         if (expr == nullptr) {
             if (error.empty())
-                error = getNoArgError(lexer, token);
+                error = ParserError::NoArg(lexer, token);
             return nullptr;
         }
         func->children.push_back(std::move(expr));
@@ -318,9 +324,9 @@ std::unique_ptr<Node> Parser::parsePrefixToken(Lexer &lexer, const Token &token)
         if (!error.empty())
             return nullptr;
         if (lexer.peek().type == Token::Type::Eof) {
-            error = getMissingOperandForPrefixError(token);
+            error = ParserError::MissingOperandForPrefix(token);
         } else {
-            error = getInvalidStartError(lexer);
+            error = ParserError::InvalidStart(lexer);
         }
         return nullptr;
     }
@@ -349,9 +355,11 @@ std::unique_ptr<Node> Parser::parseOperator(Lexer &lexer, const Token &token, bo
             return nullptr;
         }
         if (Token::isNewline(token)) {
-            error = getMultilineWoParenError(Token(token));
+            error = ParserError::MultilineWoParen(Token(token));
+        } else if (lexer.peek().type == Token::Type::Comma) {
+            error = ParserError::UnexpectedToken(lexer);
         } else
-            error = getMissingOperatorError(Token(token), lexer.peek());
+            error = ParserError::MissingOperator(Token(token), lexer.peek());
         return nullptr;
     }
     return std::move(op);
@@ -375,8 +383,11 @@ bool Parser::isFunctionDefinition(const Lexer &lexer) const {
     if (lexer.peek(1).type != Token::Type::Symbol || lexer.peek(1).value[0] != '(') return false;
     int i = 2;
     while (true) {
+        while (Token::isNewline(lexer.peek(i))) {i++;}
         if (lexer.peek(i++).type != Token::Type::Word) return false;
+        while (Token::isNewline(lexer.peek(i))) {i++;}
         if (lexer.peek(i).type == Token::Type::Symbol && lexer.peek(i++).value[0] == ')') break;
+        while (Token::isNewline(lexer.peek(i))) {i++;}
         if (lexer.peek(i++).type != Token::Type::Comma) return false;
     }
     if (lexer.peek(i).type == Token::Type::Symbol && lexer.peek(i).value[0] == '=') return true;
@@ -387,15 +398,15 @@ bool Parser::isDefinedFunction(const Token &token) const {
     return preDefinedFunctions.contains(token.value) || functions.contains(token.value);
 }
 
-int Parser::getNextComma(const Lexer& lexer) {
+int Parser::getNextComma(const Lexer& lexer) const {
     int skip = 0;
     for (int i = 0; ;) {
         if (lexer.peek(i).type == Token::Type::Eof) return -1;
         if (lexer.peek(i).type == Token::Type::Word) {
             if (functions.contains(lexer.peek(i).value)) {
-                skip += functions.at(lexer.peek(i).value).size() - 1;
+                skip += static_cast<int>(functions.at(lexer.peek(i).value).size()) - 1;
             } else if (preDefinedFunctions.contains(lexer.peek(i).value)) {
-                skip += preDefinedFunctions.at(lexer.peek(i).value).size() - 1;
+                skip += static_cast<int>(preDefinedFunctions.at(lexer.peek(i).value).size()) - 1;
             }
         }
         if (lexer.peek(i).type == Token::Type::Comma) {
