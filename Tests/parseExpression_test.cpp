@@ -59,7 +59,7 @@ static void toLispImpl(const Node *n, std::ostringstream &out) {
     }
 }
 
-static std::string toLisp(const std::unique_ptr<Node> &n) {
+static std::string toLisp(const std::shared_ptr<Node> &n) {
     std::ostringstream out;
     toLispImpl(n.get(), out);
     return out.str();
@@ -1258,14 +1258,14 @@ TEST_CASE("invalid: multiline missing closing paren") {
 //     REQUIRE(ast.empty());
 // }
 
-TEST_CASE("invalid: function call with a trailing comma") { /* TODO can do better error message but not a bug */
+TEST_CASE("invalid: function call with a trailing comma") {
     Lexer lx("f(x,y)=x+y\nf(1, 2,)");
     Parser parser;
     auto ast = parser.parse(lx);
-    REQUIRE(parser.getError() ==   "Function call with too many arguments.\n"
+    REQUIRE(parser.getError() ==   "Unexpected token ','\n"
                                     "--> at line 2:\n"
                                     "    f(1, 2,)\n"
-                                    "    ^-- 'f' expects 2 arguments.");
+                                    "          ^-- This should not be here");
     REQUIRE(ast.empty());
 }
 

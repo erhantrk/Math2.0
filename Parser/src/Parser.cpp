@@ -8,7 +8,7 @@
 
 #include "../inc/ParserErrors.hpp"
 
-static bool areAllVariablesDefined(const std::unique_ptr<Node>&, const std::unordered_set<std::string>&, std::string&, const std::vector<std::string>& = {});
+static bool areAllVariablesDefined(const std::shared_ptr<Node>&, const std::unordered_set<std::string>&, std::string&, const std::vector<std::string>& = {});
 
 std::pair<int, int> getBindingPower(const Token &token, bool isPrefix = false) {
     if (token.value.empty()) return std::make_pair(-1, -1);
@@ -36,8 +36,8 @@ std::pair<int, int> getBindingPower(const Token &token, bool isPrefix = false) {
     return std::make_pair(-1, -1);
 }
 
-std::vector<std::unique_ptr<Node> > Parser::parse(Lexer &lexer) {
-    std::vector<std::unique_ptr<Node> > statements;
+std::vector<std::shared_ptr<Node> > Parser::parse(Lexer &lexer) {
+    std::vector<std::shared_ptr<Node> > statements;
     clearError();
     parenthesesLevel = 0;
 
@@ -64,7 +64,7 @@ std::vector<std::unique_ptr<Node> > Parser::parse(Lexer &lexer) {
     return statements;
 }
 
-std::unique_ptr<Node> Parser::parseStatement(Lexer &lexer) {
+std::shared_ptr<Node> Parser::parseStatement(Lexer &lexer) {
     const Token &tmp = lexer.peek(); /* To give correct error if token is undefined variable */
     bool isFunctionDef = isFunctionDefinition(lexer);
     std::pair<std::string, std::vector<std::string>> function = {};
@@ -128,16 +128,16 @@ std::unique_ptr<Node> Parser::parseStatement(Lexer &lexer) {
     return lhs;
 }
 
-std::unique_ptr<Node> Parser::parseExpression(Lexer &lexer, int min_bp) { // NOLINT(*-no-recursion)
+std::shared_ptr<Node> Parser::parseExpression(Lexer &lexer, int min_bp) { // NOLINT(*-no-recursion)
     Token token(Token::Type::Eof, "", 0, 0, "");
-    std::unique_ptr<Node> lhs = parseLhs(lexer, token);
+    std::shared_ptr<Node> lhs = parseLhs(lexer, token);
     if (!lhs) {
         return nullptr;
     }
     return parseRhs(lexer, lhs, token, min_bp);
 }
 
-std::unique_ptr<Node> Parser::parseLhs(Lexer &lexer, Token &outToken) { // NOLINT(*-no-recursion)
+std::shared_ptr<Node> Parser::parseLhs(Lexer &lexer, Token &outToken) { // NOLINT(*-no-recursion)
     const Token &token = lexer.peek();
     const bool isValid = (token.type == Token::Type::Number)
                          || (token.type == Token::Type::Word)
@@ -153,7 +153,7 @@ std::unique_ptr<Node> Parser::parseLhs(Lexer &lexer, Token &outToken) { // NOLIN
     /* Special case we need to skip the newline */
     while (Token::isNewline(token)) *const_cast<Token *>(&token) = lexer.next();
 
-    std::unique_ptr<Node> lhs = nullptr;
+    std::shared_ptr<Node> lhs = nullptr;
 
     if (token.type == Token::Type::Symbol && token.value[0] == '(') {
         lhs = parseParentheses(lexer, token);
@@ -169,7 +169,7 @@ std::unique_ptr<Node> Parser::parseLhs(Lexer &lexer, Token &outToken) { // NOLIN
     return std::move(lhs);
 }
 
-std::unique_ptr<Node> Parser::parseRhs(Lexer &lexer, std::unique_ptr<Node>& lhs, const Token& token, int min_bp) { // NOLINT(*-no-recursion)
+std::shared_ptr<Node> Parser::parseRhs(Lexer &lexer, std::shared_ptr<Node>& lhs, const Token& token, int min_bp) { // NOLINT(*-no-recursion)
     while (true) {
         if (lexer.peek().type == Token::Type::Eof) break;
         if (parenthesesLevel == 0 && Token::isNewline(lexer.peek())) break;
@@ -180,7 +180,7 @@ std::unique_ptr<Node> Parser::parseRhs(Lexer &lexer, std::unique_ptr<Node>& lhs,
         if (lexer.peek().type == Token::Type::Symbol && lexer.peek().value[0] == ')') break;
 
         bool isImplicit = false;
-        std::unique_ptr<Node> op = parseOperator(lexer, token, isImplicit);
+        std::shared_ptr<Node> op = parseOperator(lexer, token, isImplicit);
         if (!op) return nullptr;
 
         auto &&[lhs_bp, rhs_bp] = getBindingPower(lexer.peek());
@@ -211,9 +211,9 @@ std::unique_ptr<Node> Parser::parseRhs(Lexer &lexer, std::unique_ptr<Node>& lhs,
     return std::move(lhs);
 }
 
-std::unique_ptr<Node> Parser::parseParentheses(Lexer &lexer, const Token &token) { // NOLINT(*-no-recursion)
+std::shared_ptr<Node> Parser::parseParentheses(Lexer &lexer, const Token &token) { // NOLINT(*-no-recursion)
     parenthesesLevel++;
-    std::unique_ptr<Node> lhs = parseExpression(lexer, 0);
+    std::shared_ptr<Node> lhs = parseExpression(lexer, 0);
     const Token &pr = lexer.peek();
     if (pr.type != Token::Type::Symbol || pr.value[0] != ')') {
         if (!error.empty())
@@ -238,8 +238,8 @@ std::unique_ptr<Node> Parser::parseParentheses(Lexer &lexer, const Token &token)
     return std::move(lhs);
 }
 
-std::unique_ptr<Node> Parser::parseFunction(Lexer &lexer, const Token &token) { // NOLINT(*-no-recursion)
-    std::unique_ptr<Node> func = Node::createNode(token, *this);
+std::shared_ptr<Node> Parser::parseFunction(Lexer &lexer, const Token &token) { // NOLINT(*-no-recursion)
+    std::shared_ptr<Node> func = Node::createNode(token, *this);
 
     int argCount = 0;
     if (preDefinedFunctions.contains(token.value)) {
@@ -274,20 +274,20 @@ std::unique_ptr<Node> Parser::parseFunction(Lexer &lexer, const Token &token) { 
                 }
                 Lexer argPartLexer = argLexer.getSubLexer(commaIndex);
                 argLexer.skip(commaIndex + 1);
-                std::unique_ptr<Node> argPart = parseExpression(argPartLexer, 0);
+                std::shared_ptr<Node> argPart = parseExpression(argPartLexer, 0);
                 if (argPart == nullptr) {
                     return nullptr;
                 }
                 func->children.push_back(std::move(argPart));
             }
         }
-        if (argLexer.getIndexFirstInstance(Token::Type::Comma) >= 0) {
-            if (error.empty())
-                error = ParserError::TooManyArguments(token, argCount);;
-        }
-        std::unique_ptr<Node> arg = parseExpression(argLexer, 0);
+        std::shared_ptr<Node> arg = parseExpression(argLexer, 0);
         if (arg == nullptr) {
             return nullptr;
+        }
+        if (argLexer.getIndexFirstInstance(Token::Type::Comma) >= 0) {
+            if (error.empty())
+                error = ParserError::TooManyArguments(token, argCount);
         }
         func->children.push_back(std::move(arg));
         lexer.skip(prIndex);
@@ -304,7 +304,7 @@ std::unique_ptr<Node> Parser::parseFunction(Lexer &lexer, const Token &token) { 
             return nullptr;
         }
         auto&& [lhs_bp, rhs_bp] = getBindingPower(token);
-        std::unique_ptr<Node> expr = parseExpression(lexer, rhs_bp);
+        std::shared_ptr<Node> expr = parseExpression(lexer, rhs_bp);
         if (expr == nullptr) {
             if (error.empty())
                 error = ParserError::NoArg(lexer, token);
@@ -316,10 +316,10 @@ std::unique_ptr<Node> Parser::parseFunction(Lexer &lexer, const Token &token) { 
     return std::move(func);
 }
 
-std::unique_ptr<Node> Parser::parsePrefixToken(Lexer &lexer, const Token &token) { // NOLINT(*-no-recursion)
+std::shared_ptr<Node> Parser::parsePrefixToken(Lexer &lexer, const Token &token) { // NOLINT(*-no-recursion)
     auto&& [lhs_bp, rhs_bp] = getBindingPower(token, true);
-    std::unique_ptr<Node> op = Node::createNode(token, *this);
-    std::unique_ptr<Node> arg = parseExpression(lexer, rhs_bp);
+    std::shared_ptr<Node> op = Node::createNode(token, *this);
+    std::shared_ptr<Node> arg = parseExpression(lexer, rhs_bp);
     if (arg == nullptr) {
         if (!error.empty())
             return nullptr;
@@ -334,8 +334,8 @@ std::unique_ptr<Node> Parser::parsePrefixToken(Lexer &lexer, const Token &token)
     return std::move(op);
 }
 
-std::unique_ptr<Node> Parser::parseOperator(Lexer &lexer, const Token &token, bool& isImplicit) {
-    std::unique_ptr<Node> op = nullptr;
+std::shared_ptr<Node> Parser::parseOperator(Lexer &lexer, const Token &token, bool& isImplicit) {
+    std::shared_ptr<Node> op = nullptr;
     if (lexer.peek().type == Token::Type::Symbol) {
         if (lexer.peek().value[0] == '(') {
             Token temp{Token::Type::Symbol, "*", token.line, lexer.peek().pos - 1, token.line_content};
@@ -417,7 +417,7 @@ int Parser::getNextComma(const Lexer& lexer) const {
     }
 }
 
-static bool areAllVariablesDefined(const std::unique_ptr<Node> &node, const std::unordered_set<std::string> &definedVariables, // NOLINT(*-no-recursion)
+static bool areAllVariablesDefined(const std::shared_ptr<Node> &node, const std::unordered_set<std::string> &definedVariables, // NOLINT(*-no-recursion)
     std::string &undefinedVariable, const std::vector<std::string>& parameters) {
     if (!node) {
         return true;

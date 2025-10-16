@@ -11,16 +11,16 @@
 #include "../../Node/inc/Node.hpp"
 
 class Parser {
-    std::unique_ptr<Node> parseExpression(Lexer &lexer, int min_bp);
-    std::unique_ptr<Node> parseLhs(Lexer &lexer, Token& token);
-    std::unique_ptr<Node> parseRhs(Lexer &lexer, std::unique_ptr<Node>& lhs, const Token& token, int min_bp);
+    std::shared_ptr<Node> parseExpression(Lexer &lexer, int min_bp);
+    std::shared_ptr<Node> parseLhs(Lexer &lexer, Token& token);
+    std::shared_ptr<Node> parseRhs(Lexer &lexer, std::shared_ptr<Node>& lhs, const Token& token, int min_bp);
 
-    std::unique_ptr<Node> parseParentheses(Lexer &lexer, const Token &token);
-    std::unique_ptr<Node> parseFunction(Lexer &lexer, const Token &token);
-    std::unique_ptr<Node> parsePrefixToken(Lexer &lexer, const Token &token);
-    std::unique_ptr<Node> parseOperator(Lexer &lexer, const Token &token, bool& outToken);
+    std::shared_ptr<Node> parseParentheses(Lexer &lexer, const Token &token);
+    std::shared_ptr<Node> parseFunction(Lexer &lexer, const Token &token);
+    std::shared_ptr<Node> parsePrefixToken(Lexer &lexer, const Token &token);
+    std::shared_ptr<Node> parseOperator(Lexer &lexer, const Token &token, bool& outToken);
 
-    std::unique_ptr<Node> parseStatement(Lexer &lexer);
+    std::shared_ptr<Node> parseStatement(Lexer &lexer);
     [[nodiscard]] bool isFunctionDefinition(const Lexer &lexer) const;
     static std::pair<std::string, std::vector<std::string>> parseFunctionDefinition(Lexer &lexer);
     int getNextComma(const Lexer& lexer) const;
@@ -40,7 +40,7 @@ class Parser {
 public:
     [[nodiscard]] bool isDefinedFunction(const Token &token) const;
 
-    std::vector<std::unique_ptr<Node> > parse(Lexer &lexer);
+    std::vector<std::shared_ptr<Node> > parse(Lexer &lexer);
 
     std::string getError();
 
