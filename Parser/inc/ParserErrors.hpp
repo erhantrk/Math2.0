@@ -37,4 +37,6 @@ public:
     static std::string TooManyArguments(const Token &function, int argCount);
 
     static std::string MultiArgumentCalledWoParentheses(const Token &function, int argCount);
+
+    static std::string EmptyArgument(const Token& comma);
 };

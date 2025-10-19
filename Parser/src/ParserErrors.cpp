@@ -197,3 +197,12 @@ std::string ParserError::MultiArgumentCalledWoParentheses(const Token &function,
     oss << function.value << "' expects " << std::to_string(argCount) << " arguments. Cannot call without parentheses.";
     return oss.str();
 }
+
+std::string ParserError::EmptyArgument(const Token& comma) {
+    std::ostringstream oss;
+    oss << "An expression was expected for an argument, but none was found.\n";
+    oss << "--> at line " << comma.line << ":\n";
+    oss << "    " << comma.line_content << "\n";
+    oss << "    " << std::string(comma.pos, ' ') << "^-- Expected an argument here";
+    return oss.str();
+}

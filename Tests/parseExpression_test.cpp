@@ -1247,25 +1247,25 @@ TEST_CASE("invalid: multiline missing closing paren") {
     REQUIRE_PARSER_ERROR("(1 + \n 2", expected_error);
 }
 
-// TEST_CASE("invalid: function call with an empty argument") {
-//     Lexer lx("f(x,y,z)=x+y+z\nf(1,,3)");
-//     Parser parser;
-//     auto ast = parser.parse(lx);
-//     REQUIRE(parser.getError() ==   "An expression was expected for an argument, but none was found.\n"
-//                                     "--> at line 2:\n"
-//                                     "    f(1,,3)\n"
-//                                     "        ^-- Expected an argument here");
-//     REQUIRE(ast.empty());
-// }
+TEST_CASE("invalid: function call with an empty argument") {
+    Lexer lx("f(x,y,z)=x+y+z\nf(1,,3)");
+    Parser parser;
+    auto ast = parser.parse(lx);
+    REQUIRE(parser.getError() ==   "An expression was expected for an argument, but none was found.\n"
+                                    "--> at line 2:\n"
+                                    "    f(1,,3)\n"
+                                    "        ^-- Expected an argument here");
+    REQUIRE(ast.empty());
+}
 
 TEST_CASE("invalid: function call with a trailing comma") {
     Lexer lx("f(x,y)=x+y\nf(1, 2,)");
     Parser parser;
     auto ast = parser.parse(lx);
-    REQUIRE(parser.getError() ==   "Unexpected token ','\n"
+    REQUIRE(parser.getError() ==   "Function call with too many arguments.\n"
                                     "--> at line 2:\n"
                                     "    f(1, 2,)\n"
-                                    "          ^-- This should not be here");
+                                    "    ^-- 'f' expects 2 arguments.");
     REQUIRE(ast.empty());
 }
 

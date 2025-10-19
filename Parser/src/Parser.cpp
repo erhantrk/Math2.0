@@ -273,21 +273,22 @@ std::shared_ptr<Node> Parser::parseFunction(Lexer &lexer, const Token &token) { 
                     return nullptr;
                 }
                 Lexer argPartLexer = argLexer.getSubLexer(commaIndex);
+                if (argPartLexer.peek().type == Token::Type::Eof) {
+                    if (error.empty())
+                        error = ParserError::EmptyArgument(argLexer.peek());
+                }
                 argLexer.skip(commaIndex + 1);
                 std::shared_ptr<Node> argPart = parseExpression(argPartLexer, 0);
                 if (argPart == nullptr) {
-                    return nullptr;
+                    return nullptr; /* Arg is already invalid use previous error */
                 }
                 func->children.push_back(std::move(argPart));
             }
         }
         std::shared_ptr<Node> arg = parseExpression(argLexer, 0);
         if (arg == nullptr) {
-            return nullptr;
-        }
-        if (argLexer.getIndexFirstInstance(Token::Type::Comma) >= 0) {
-            if (error.empty())
-                error = ParserError::TooManyArguments(token, argCount);
+            error = ParserError::TooManyArguments(token, argCount); /*Overwrite the unexpected token error */
+            return nullptr; /* Arg is already invalid use previous error */
         }
         func->children.push_back(std::move(arg));
         lexer.skip(prIndex);
