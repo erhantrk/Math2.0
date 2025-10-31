@@ -3,12 +3,12 @@
 //
 
 #include "../inc/Parser.hpp"
+
+#include <algorithm>
 #include <ranges>
 #include <unordered_set>
-
+#include "../../Util/ASTUtil.hpp"
 #include "../inc/ParserErrors.hpp"
-
-static bool areAllVariablesDefined(const std::shared_ptr<Node>&, const std::unordered_set<std::string>&, std::string&, const std::vector<std::string>& = {});
 
 std::pair<int, int> getBindingPower(const Token &token, bool isPrefix = false) {
     if (token.value.empty()) return std::make_pair(-1, -1);
@@ -83,6 +83,10 @@ std::shared_ptr<Node> Parser::parseStatement(Lexer &lexer) {
             error = ParserError::InvalidAssignmentTarget(lexer.peek());
             return nullptr;
         }
+        if (preDefinedVariables.contains(lhs->value)) {
+            error = ParserError::AssignmentToLiteralValue(lhs->value, lexer.peek());
+            return nullptr;
+        }
         const Token &as = lexer.next();
         auto rhs = parseExpression(lexer, 0);
         if (!rhs) {
@@ -91,7 +95,7 @@ std::shared_ptr<Node> Parser::parseStatement(Lexer &lexer) {
             return nullptr;
         }
         std::string undefinedVar;
-        if (!areAllVariablesDefined(rhs, variables, undefinedVar)) {
+        if (!areAllVariablesDefined(rhs,  undefinedVar)) {
             if (error.empty())
                 error = ParserError::UndefinedVariable(as, undefinedVar);
             return nullptr;
@@ -104,7 +108,7 @@ std::shared_ptr<Node> Parser::parseStatement(Lexer &lexer) {
     }
     std::string undefinedVar;
 
-    if (isFunctionDef && !areAllVariablesDefined(lhs, variables, undefinedVar, function.second)) {
+    if (isFunctionDef && !areAllVariablesDefined(lhs, undefinedVar, function.second)) {
         if (error.empty())
             error = ParserError::UndefinedVariable(tmp, undefinedVar);
         return nullptr;
@@ -190,6 +194,7 @@ std::shared_ptr<Node> Parser::parseRhs(Lexer &lexer, std::shared_ptr<Node>& lhs,
             lexer.skip();
             op->children.push_back(std::move(lhs));
             lhs = std::move(op);
+            lhs = simplify(std::move(lhs));
             if (lexer.peek().type == Token::Type::Word || lexer.peek().type == Token::Type::Number) {
                 Token temp{Token::Type::Symbol, "*", token.line, lexer.peek().pos - 1, token.line_content};
                 lexer.addToken(temp);
@@ -207,6 +212,7 @@ std::shared_ptr<Node> Parser::parseRhs(Lexer &lexer, std::shared_ptr<Node>& lhs,
         op->children.push_back(std::move(lhs));
         op->children.push_back(std::move(rhs));
         lhs = std::move(op);
+        lhs = simplify(std::move(lhs));
     }
     return std::move(lhs);
 }
@@ -332,7 +338,7 @@ std::shared_ptr<Node> Parser::parsePrefixToken(Lexer &lexer, const Token &token)
         return nullptr;
     }
     op->children.push_back(std::move(arg));
-    return std::move(op);
+    return simplify(std::move(op));
 }
 
 std::shared_ptr<Node> Parser::parseOperator(Lexer &lexer, const Token &token, bool& isImplicit) {
@@ -380,7 +386,9 @@ std::pair<std::string, std::vector<std::string>> Parser::parseFunctionDefinition
 }
 
 bool Parser::isFunctionDefinition(const Lexer &lexer) const {
-    if (lexer.peek().type != Token::Type::Word || variables.contains(lexer.peek().value)) return false;
+    if (lexer.peek().type != Token::Type::Word
+        || variables.contains(lexer.peek().value)
+        || preDefinedVariables.contains(lexer.peek().value)) return false;
     if (lexer.peek(1).type != Token::Type::Symbol || lexer.peek(1).value[0] != '(') return false;
     int i = 2;
     while (true) {
@@ -396,7 +404,9 @@ bool Parser::isFunctionDefinition(const Lexer &lexer) const {
 }
 
 bool Parser::isFunctionExpression(const Lexer &lexer) const {
-    if (lexer.peek().type != Token::Type::Word || variables.contains(lexer.peek().value)) return false;
+    if (lexer.peek().type != Token::Type::Word
+        || variables.contains(lexer.peek().value)
+        || preDefinedVariables.contains(lexer.peek().value)) return false;
     if (lexer.peek(1).type != Token::Type::Symbol || lexer.peek(1).value[0] != '(') return false;
     int i = 2;
     while (true) {
@@ -410,7 +420,6 @@ bool Parser::isFunctionExpression(const Lexer &lexer) const {
     if (lexer.peek(i).type == Token::Type::Symbol && lexer.peek(i).value[0] == '=') return false;
     return true;
 }
-
 
 bool Parser::isDefinedFunction(const Token &token) const {
     return preDefinedFunctions.contains(token.value) || functions.contains(token.value);
@@ -435,21 +444,23 @@ int Parser::getNextComma(const Lexer& lexer) const {
     }
 }
 
-static bool areAllVariablesDefined(const std::shared_ptr<Node> &node, const std::unordered_set<std::string> &definedVariables, // NOLINT(*-no-recursion)
-    std::string &undefinedVariable, const std::vector<std::string>& parameters) {
+bool Parser::areAllVariablesDefined(const std::shared_ptr<Node> &node, std::string &undefinedVariable, const std::vector<std::string>& parameters) { // NOLINT(*-no-recursion)
     if (!node) {
         return true;
     }
 
     if (node->type == Node::Type::Variable) {
-        if (!(definedVariables.contains(node->value) || std::ranges::find(parameters, node->value) != parameters.end())) {
+        bool foundInParams = std::ranges::find(parameters, node->value) != parameters.end();
+        bool foundInSets = variables.contains(node->value) || preDefinedVariables.contains(node->value);
+
+        if (!(foundInSets || foundInParams)) {
             undefinedVariable = node->value;
             return false;
         }
     }
 
     for (const auto &child: node->children) {
-        if (!areAllVariablesDefined(child, definedVariables, undefinedVariable, parameters)) {
+        if (!areAllVariablesDefined(child, undefinedVariable, parameters)) {
             return false;
         }
     }
@@ -468,3 +479,4 @@ void Parser::clearError() {
 void Parser::defineVariable(const std::string& name) {
     variables.emplace(name);
 }
+

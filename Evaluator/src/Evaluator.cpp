@@ -5,12 +5,7 @@
 #include <cmath>
 #include <stdexcept>
 #include <string>
-
-double factorial(double n) {
-    if (n < 0) return NAN;
-    if (n > 170) return INFINITY;
-    return std::tgamma(n + 1);
-}
+#include "../../Util/ASTUtil.hpp"
 
 double Evaluator::evaluate(const std::shared_ptr<Node>& node) {
     error.clear();

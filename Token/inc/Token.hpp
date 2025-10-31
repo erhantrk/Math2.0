@@ -15,6 +15,7 @@ struct Token {
     std::string line_content;
 
     Token(const Type &type, const std::string &value, int line, int pos, const std::string &line_content);
+    Token(const Type &type, const std::string &value);
     static bool isTokenPostFix(const Token &token);
     static bool isTokenPreFix(const Token &token);
     static bool isNewline(const Token &token);

@@ -11,10 +11,8 @@
 #include "Util/ASTPrint.hpp" // <-- Include new printer
 
 int main() {
-    std::string input = "g(x)=atan2(sin x, cos x^2)\n"
-                        "f(x, y) = x*y*e^(x+y)\n"
-                        "a = -1\n"
-                        "g(f(x, a)) \n";
+    std::string input = "f(x,y) = y + (x ^ 0)\n"
+                        "f(1, y)";
 
     Lexer lexer(input);
     if (!lexer.getError().empty()) {
@@ -31,23 +29,20 @@ int main() {
     }
 
     Evaluator evaluator;
-    SymbolicEvaluator sEvaluator; // <-- Create an expander instance
+    SymbolicEvaluator sEvaluator;
 
     for (const auto& node : ast) {
-        // 1. Register function definitions with BOTH
         if (node->type == Node::Type::FunctionAssignment) {
-            evaluator.evaluate(node); // This registers the function in the evaluator
-            sEvaluator.registerFunction(node); // Register function in the expander
+            evaluator.evaluate(node);
+            sEvaluator.registerFunction(node);
             std::cout << "Defined: " << toHumanReadable(node) << std::endl;
             continue;
         }
 
-        // 2. Try to evaluate numerically
         double val = evaluator.evaluate(node);
         std::string evalError = evaluator.getError();
 
         if (evalError.empty()) {
-            // Success! Print the number
             std::cout << toHumanReadable(node) << " = " << val << std::endl;
             if (node->type == Node::Type::Assignment) {
                 sEvaluator.registerVariable(std::make_pair(node->value, val));

@@ -24,14 +24,17 @@ class Parser {
     [[nodiscard]] bool isFunctionDefinition(const Lexer &lexer) const;
     [[nodiscard]] bool isFunctionExpression(const Lexer &lexer) const;
     static std::pair<std::string, std::vector<std::string>> parseFunctionDefinition(Lexer &lexer);
-    int getNextComma(const Lexer& lexer) const;
+    [[nodiscard]] int getNextComma(const Lexer& lexer) const;
+    bool areAllVariablesDefined(const std::shared_ptr<Node> &node, std::string &undefinedVariable, const std::vector<std::string>& parameters = {});
 
     std::string error;
     int parenthesesLevel = 0;
     bool isParsingFunctionCall = false;
-    std::unordered_set<std::string> variables = {"e", "pi"};
-    std::unordered_map<std::string, std::vector<std::string>> functions;
 
+    std::unordered_set<std::string> variables = {};
+    static inline const std::unordered_set<std::string> preDefinedVariables = {"e", "pi"};
+
+    std::unordered_map<std::string, std::vector<std::string>> functions;
     static inline const std::unordered_map<std::string, std::vector<std::string>> preDefinedFunctions = {
         {"sin", {"0-x"}}, {"cos", {"0-x"}}, {"tan", {"0-x"}},
         {"log", {"0-x"}}, {"ln", {"0-x"}}, {"sqrt", {"0-x"}},

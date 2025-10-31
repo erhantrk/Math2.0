@@ -25,7 +25,7 @@ TEST_CASE("Simple addition and subtraction") {
     Parser parser;
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(+ (- 5 3) 2)");
+    REQUIRE(toLisp(ast[0]) == "4.000000");
 }
 
 TEST_CASE("Simple multiplication and division") {
@@ -33,7 +33,7 @@ TEST_CASE("Simple multiplication and division") {
     Parser parser;
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(* (/ 10 5) 2)");
+    REQUIRE(toLisp(ast[0]) == "4.000000");
 }
 
 TEST_CASE("Exponent with multiplication") {
@@ -41,7 +41,7 @@ TEST_CASE("Exponent with multiplication") {
     Parser parser;
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(* 2 (^ 3 2))");
+    REQUIRE(toLisp(ast[0]) == "18.000000");
 }
 
 TEST_CASE("Exponent with parentheses") {
@@ -49,7 +49,7 @@ TEST_CASE("Exponent with parentheses") {
     Parser parser;
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(^ (* 2 3) 2)");
+    REQUIRE(toLisp(ast[0]) == "36.000000");
 }
 
 TEST_CASE("Unary minus with addition") {
@@ -57,7 +57,7 @@ TEST_CASE("Unary minus with addition") {
     Parser parser;
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(+ (- 5) (- 3))");
+    REQUIRE(toLisp(ast[0]) == "-8.000000");
 }
 
 TEST_CASE("Multiplication with unary minus") {
@@ -65,7 +65,7 @@ TEST_CASE("Multiplication with unary minus") {
     Parser parser;
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(* 5 (- 3))");
+    REQUIRE(toLisp(ast[0]) == "-15.000000");
 }
 
 TEST_CASE("Double negative") {
@@ -73,7 +73,7 @@ TEST_CASE("Double negative") {
     Parser parser;
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(- 5 (- 3))");
+    REQUIRE(toLisp(ast[0]) == "8.000000");
 }
 
 TEST_CASE("Chained unary minus") {
@@ -108,7 +108,7 @@ TEST_CASE("Double factorial") {
     Parser parser;
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(! (! 3))");
+    REQUIRE(toLisp(ast[0]) == "720.000000");
 }
 
 TEST_CASE("Factorial with parentheses") {
@@ -296,7 +296,7 @@ TEST_CASE("Number notations") {
     Parser parser;
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(- (+ 123 45.67) (* 6.022E+23 9.1e-31))");
+    REQUIRE(toLisp(ast[0]) == "168.669999");
 }
 
 TEST_CASE("Predefined constants in expressions") {
@@ -344,7 +344,7 @@ TEST_CASE("Factorial of factorial") {
     Parser parser;
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(! (! 2))");
+    REQUIRE(toLisp(ast[0]) == "2.000000");
 }
 
 TEST_CASE("Mixed precedence addition and multiplication") {
@@ -376,7 +376,7 @@ TEST_CASE("Implicit multiplication with nested parentheses") {
     Parser parser;
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(* 3 (* 4 5))");
+    REQUIRE(toLisp(ast[0]) == "60.000000");
 }
 
 TEST_CASE("Implicit multiplication of variables in parentheses") {
@@ -395,7 +395,7 @@ TEST_CASE("Unary minus vs exponent precedence") {
     Parser parser;
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(- (^ 2 2))");
+    REQUIRE(toLisp(ast[0]) == "-4.000000");
 }
 
 TEST_CASE("Parentheses with unary minus and exponent") {
@@ -403,7 +403,7 @@ TEST_CASE("Parentheses with unary minus and exponent") {
     Parser parser;
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(^ (- 2) 2)");
+    REQUIRE(toLisp(ast[0]) == "4.000000");
 }
 
 TEST_CASE("Complex mixed arithmetic") {
@@ -411,7 +411,7 @@ TEST_CASE("Complex mixed arithmetic") {
     Parser parser;
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(- (+ 1 (/ (* 2 3) 4)) 5)");
+    REQUIRE(toLisp(ast[0]) == "-2.500000");
 }
 
 TEST_CASE("Implicit multiplication of factorial and variable") {
@@ -527,7 +527,7 @@ TEST_CASE("Multiline parentheses") {
     Parser parser;
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(* (+ 10 2) 3)");
+    REQUIRE(toLisp(ast[0]) == "36.000000");
 }
 
 TEST_CASE("Deeply nested parentheses with mixed operators and newlines") {
@@ -570,7 +570,7 @@ TEST_CASE("Multiline assignment") {
     parser.defineVariable("a");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(= a (- (+ 1 (* 2 3)) 4))");
+    REQUIRE(toLisp(ast[0]) == "(= a 3.000000)");
 }
 
 TEST_CASE("Implicit multiplication after factorial") {
@@ -661,7 +661,7 @@ TEST_CASE("Function call without parentheses on factorial number") {
     Parser parser;
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(sqrt (! 4))");
+    REQUIRE(toLisp(ast[0]) == "(sqrt 24.000000)");
 }
 
 TEST_CASE("Factorial of function call without parentheses") {
@@ -776,7 +776,7 @@ TEST_CASE("Function call with parentheses") {
     Parser parser;
     auto ast = parser.parse(lx);
     REQUIRE(ast.size() == 2);
-    REQUIRE(toLisp(ast.back()) == "(f (+ 3 5) (^ 2 4))");
+    REQUIRE(toLisp(ast.back()) == "(f 8.000000 16.000000)");
 }
 
 TEST_CASE("Function call with function parameter") {
@@ -904,7 +904,7 @@ TEST_CASE("Implicit multiplication with multi-argument function call") {
 
     auto ast = parser.parse(lx);
     REQUIRE(ast.size() == 2);
-    REQUIRE(toLisp(ast.back()) == "(! (* (* 2 (! (f a b))) (! 3)))");
+    REQUIRE(toLisp(ast.back()) == "(! (* (* 2 (! (f a b))) 6.000000))");
 }
 
 TEST_CASE("Function with many arguments spread across multiple lines") {

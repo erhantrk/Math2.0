@@ -206,3 +206,12 @@ std::string ParserError::EmptyArgument(const Token& comma) {
     oss << "    " << std::string(comma.pos, ' ') << "^-- Expected an argument here";
     return oss.str();
 }
+
+std::string ParserError::AssignmentToLiteralValue(const std::string &var, const Token &token) {
+    std::ostringstream oss;
+    oss << "Assigment to constant value '" + var + "'.\n";
+    oss << "--> at line " << token.line << ":\n";
+    oss << "    " << token.line_content << "\n";
+    oss << "    " << std::string(token.pos, ' ') << "^-- Cannot assign to this variable.";
+    return oss.str();
+}

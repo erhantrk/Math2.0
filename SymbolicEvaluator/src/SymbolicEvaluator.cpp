@@ -5,6 +5,7 @@
 #include "../inc/SymbolicEvaluator.hpp"
 
 #include <stdexcept>
+#include "../../Util/ASTUtil.hpp"
 
 void SymbolicEvaluator::registerFunction(const std::shared_ptr<Node>& funcDefNode) {
     if (funcDefNode->type == Node::Type::FunctionAssignment) {
@@ -52,9 +53,17 @@ std::shared_ptr<Node> SymbolicEvaluator::expandNode(const std::shared_ptr<Node>&
             expandedNode->value = std::to_string(variable);
             expandedNode->type = Node::Type::Number;
         }
+        if (node->value == "pi") {
+            expandedNode->value = std::to_string(M_PI);
+            expandedNode->type = Node::Type::Number;
+        }
+        if (node->value == "e") {
+            expandedNode->value = std::to_string(M_E);
+            expandedNode->type = Node::Type::Number;
+        }
     }
 
-    return expandedNode;
+    return simplifyNode(expandedNode);
 }
 
 

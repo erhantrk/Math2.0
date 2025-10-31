@@ -11,6 +11,10 @@ Token::Token(const Type &type, const std::string &value, int line, int pos, cons
     : type(type), value(value), line(line), pos(pos), line_content(line_content) {
 }
 
+Token::Token(const Type &type, const std::string &value)
+    : type(type), value(value), line(0), pos(0){
+}
+
 std::ostream &operator<<(std::ostream &os, const Token &token) {
     std::string tokenStr;
     switch (token.type) {

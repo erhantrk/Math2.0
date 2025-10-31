@@ -19,6 +19,8 @@ struct Node {
     Node(Type t, std::string v) : type(t), value(std::move(v)) {}
 
     static std::shared_ptr<Node> createNode(const Token &token, const Parser& parser);
+    static std::shared_ptr<Node> createNode(const Token &token);
+    static std::shared_ptr<Node> createNode(double value);
 
     template<typename Func>
     void apply(Func fun) {fun(this); for (const auto& child : children) if (child) child->apply(fun);}
