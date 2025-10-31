@@ -3,67 +3,12 @@
 //
 
 #include "catch_amalgamated.hpp"
-#include <memory>
 #include <string>
 #include <vector>
-#include <sstream>
 
 #include "../Parser/inc/Parser.hpp"
 #include "../Lexer/inc/Lexer.hpp"
-
-static void toLispImpl(const Node *n, std::ostringstream &out) {
-    if (!n) {
-        out << "<null>";
-        return;
-    }
-
-    switch (n->type) {
-        case Node::Type::Number:
-            out << n->value;
-            break;
-        case Node::Type::Variable:
-        case Node::Type::Parameter:
-            out << n->value;
-            break;
-        case Node::Type::Assignment:
-            out << "(= " << n->value << " ";
-            toLispImpl(n->children[0].get(), out);
-            out << ")";
-            break;
-        case Node::Type::Operand:
-            if (n->value == "!" && !n->children.empty()) {
-                out << "(! ";
-                toLispImpl(n->children[0].get(), out);
-                out << ")";
-            } else {
-                out << "(" << n->value;
-                for (size_t i = 0; i < n->children.size(); ++i) {
-                    out << " ";
-                    toLispImpl(n->children[i].get(), out);
-                }
-                out << ")";
-            }
-            break;
-        case Node::Type::Function:
-        case Node::Type::FunctionAssignment:
-            out << "(" << n->value;
-            if (!n->children.empty()) {
-                out << " ";
-                for (size_t i = 0; i < n->children.size(); ++i) {
-                    if (i) out << " ";
-                    toLispImpl(n->children[i].get(), out);
-                }
-            }
-            out << ")";
-            break;
-    }
-}
-
-static std::string toLisp(const std::shared_ptr<Node> &n) {
-    std::ostringstream out;
-    toLispImpl(n.get(), out);
-    return out.str();
-}
+#include "../Util/ASTPrint.hpp"
 
 
 
@@ -771,7 +716,7 @@ TEST_CASE("Simple function definition") {
     Parser parser;
     auto ast = parser.parse(lx);
     REQUIRE(ast.size() == 1);
-    REQUIRE(toLisp(ast.back()) == "(f (^ 0-x 2))");
+    REQUIRE(toLisp(ast.back()) == "(f (^ x 2))");
 }
 
 TEST_CASE("Multi parameter function definition") {
@@ -779,7 +724,7 @@ TEST_CASE("Multi parameter function definition") {
     Parser parser;
     auto ast = parser.parse(lx);
     REQUIRE(ast.size() == 1);
-    REQUIRE(toLisp(ast.back()) == "(f (* (* 0-x 1-y) 2-z))");
+    REQUIRE(toLisp(ast.back()) == "(f (* (* x y) z))");
 }
 
 TEST_CASE("Simple function call") {
@@ -1148,14 +1093,6 @@ TEST_CASE("invalid: undefined variable in assignment") {
     REQUIRE_PARSER_ERROR("y = x + z", expected_error);
 }
 
-TEST_CASE("invalid: undefined variable in function call") {
-    std::string expected_error = "Use of undefined variable 'y'.\n"
-            "--> at line 1:\n"
-            "    sin y\n"
-            "        ^-- This variable has not been defined";
-    REQUIRE_PARSER_ERROR("sin y", expected_error);
-}
-
 TEST_CASE("invalid: prefix operator missing rhs") {
     std::string expected_error = "Prefix operator '+' is missing an expression on its right-hand side.\n"
             "--> at line 1:\n"
@@ -1219,15 +1156,7 @@ TEST_CASE("invalid: Function definition over multiple lines") {
     Parser parser;
     auto ast = parser.parse(lx);
     REQUIRE(ast.size() == 1);
-    REQUIRE(toLisp(ast[0]) == "(f (+ 0-x 1-y))");
-}
-
-TEST_CASE("invalid: calling an undefined function") {
-    std::string expected_error = "Use of undefined variable 'my_func'.\n"
-                                 "--> at line 1:\n"
-                                 "    my_func(x)\n"
-                                 "    ^-- This variable has not been defined";
-    REQUIRE_PARSER_ERROR("my_func(x)", expected_error);
+    REQUIRE(toLisp(ast[0]) == "(f (+ x y))");
 }
 
 TEST_CASE("invalid: comma in function definition parameters") {

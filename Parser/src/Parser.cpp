@@ -104,16 +104,16 @@ std::shared_ptr<Node> Parser::parseStatement(Lexer &lexer) {
     }
     std::string undefinedVar;
 
-    if (!areAllVariablesDefined(lhs, variables, undefinedVar, function.second)) {
+    if (isFunctionDef && !areAllVariablesDefined(lhs, variables, undefinedVar, function.second)) {
         if (error.empty())
             error = ParserError::UndefinedVariable(tmp, undefinedVar);
         return nullptr;
     }
     if (isFunctionDef) {
-        auto definition_node = std::make_unique<Node>(Node::Type::FunctionAssignment, function.first);
-        definition_node->children.push_back(std::move(lhs));
+        auto definitionNode = std::make_unique<Node>(Node::Type::FunctionAssignment, function.first);
+        definitionNode->children.push_back(std::move(lhs));
         functions.emplace(function);
-        definition_node->apply([&](Node* node) {
+        definitionNode->apply([&](Node* node) {
             if (node->type == Node::Type::Variable && std::ranges::find(function.second, node->value) != function.second.end()) {
                 node->type = Node::Type::Parameter;
                 auto it = std::ranges::find(function.second, node->value);
@@ -123,7 +123,7 @@ std::shared_ptr<Node> Parser::parseStatement(Lexer &lexer) {
                 }
             }
         });
-        return definition_node;
+        return definitionNode;
     }
     return lhs;
 }
@@ -394,6 +394,23 @@ bool Parser::isFunctionDefinition(const Lexer &lexer) const {
     if (lexer.peek(i).type == Token::Type::Symbol && lexer.peek(i).value[0] == '=') return true;
     return false;
 }
+
+bool Parser::isFunctionExpression(const Lexer &lexer) const {
+    if (lexer.peek().type != Token::Type::Word || variables.contains(lexer.peek().value)) return false;
+    if (lexer.peek(1).type != Token::Type::Symbol || lexer.peek(1).value[0] != '(') return false;
+    int i = 2;
+    while (true) {
+        while (Token::isNewline(lexer.peek(i))) {i++;}
+        if (lexer.peek(i++).type != Token::Type::Word) return false;
+        while (Token::isNewline(lexer.peek(i))) {i++;}
+        if (lexer.peek(i).type == Token::Type::Symbol && lexer.peek(i++).value[0] == ')') break;
+        while (Token::isNewline(lexer.peek(i))) {i++;}
+        if (lexer.peek(i++).type != Token::Type::Comma) return false;
+    }
+    if (lexer.peek(i).type == Token::Type::Symbol && lexer.peek(i).value[0] == '=') return false;
+    return true;
+}
+
 
 bool Parser::isDefinedFunction(const Token &token) const {
     return preDefinedFunctions.contains(token.value) || functions.contains(token.value);

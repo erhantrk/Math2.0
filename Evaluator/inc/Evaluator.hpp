@@ -12,7 +12,7 @@
 class Evaluator {
 public:
     double evaluate(const std::shared_ptr<Node>& node);
-    std::string getError() const;
+    [[nodiscard]] std::string getError() const;
 
 private:
     struct CallFrame {

@@ -22,6 +22,7 @@ class Parser {
 
     std::shared_ptr<Node> parseStatement(Lexer &lexer);
     [[nodiscard]] bool isFunctionDefinition(const Lexer &lexer) const;
+    [[nodiscard]] bool isFunctionExpression(const Lexer &lexer) const;
     static std::pair<std::string, std::vector<std::string>> parseFunctionDefinition(Lexer &lexer);
     int getNextComma(const Lexer& lexer) const;
 

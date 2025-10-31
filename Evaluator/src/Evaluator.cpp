@@ -5,10 +5,6 @@
 #include <cmath>
 #include <stdexcept>
 #include <string>
-#include "../inc/Evaluator.hpp"
-#include <cmath>
-#include <stdexcept>
-#include <string>
 
 double factorial(double n) {
     if (n < 0) return NAN;

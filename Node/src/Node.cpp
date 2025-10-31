@@ -19,3 +19,16 @@ std::shared_ptr<Node> Node::createNode(const Token &token, const Parser& parser)
         default: return nullptr;
     }
 }
+
+std::shared_ptr<Node> Node::clone() const {
+    auto newNode = std::make_shared<Node>(this->type, this->value);
+
+    for (const auto& child : this->children) {
+        if (child) {
+            newNode->children.push_back(child->clone());
+        } else {
+            newNode->children.push_back(nullptr);
+        }
+    }
+    return newNode;
+}
