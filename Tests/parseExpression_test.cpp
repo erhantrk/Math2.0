@@ -8,7 +8,7 @@
 
 #include "../Parser/inc/Parser.hpp"
 #include "../Lexer/inc/Lexer.hpp"
-#include "../Util/ASTPrint.hpp"
+#include "../Util/inc/ASTPrint.hpp"
 
 
 

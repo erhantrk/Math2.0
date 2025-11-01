@@ -8,12 +8,10 @@
 #include "Parser/inc/Parser.hpp"
 #include "Evaluator/inc/Evaluator.hpp"
 #include "SymbolicEvaluator/inc/SymbolicEvaluator.hpp"   // <-- Include new expander
-#include "Util/ASTPrint.hpp" // <-- Include new printer
+#include "Util/inc/ASTPrint.hpp"
 
 int main() {
-    std::string input = "f(x,y) = y + (x ^ 0)\n"
-                        "f(1, y)";
-
+    std::string input = "2x + 5x -1 + 5";
     Lexer lexer(input);
     if (!lexer.getError().empty()) {
         std::cerr << "Lexer Error: " << lexer.getError() << std::endl;

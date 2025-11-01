@@ -7,7 +7,7 @@
 #include <memory>
 #include <sstream>
 #include <map>
-#include "../Node/inc/Node.hpp"
+#include "../../Node/inc/Node.hpp"
 
 static void toLispImpl(const Node* n, std::ostringstream& out) {
     if (!n) {
@@ -16,8 +16,17 @@ static void toLispImpl(const Node* n, std::ostringstream& out) {
     }
 
     switch (n->type) {
-        case Node::Type::Number:
-            out << n->value;
+        case Node::Type::Number: {
+            std::string s = n->value;
+            size_t dot_pos = s.find('.');
+            if (dot_pos != std::string::npos) {
+                s.erase(n->value.find_last_not_of('0') + 1, std::string::npos);
+                if (s.back() == '.') {
+                    s.pop_back();
+                }
+            }
+            out << s;
+        }
             break;
         case Node::Type::Variable:
             out << n->value;
@@ -107,8 +116,17 @@ static void toHumanReadableImpl(const Node* n, std::ostringstream& out, int pare
     }
 
     switch (n->type) {
-        case Node::Type::Number:
-            out << n->value;
+        case Node::Type::Number: {
+            std::string s = n->value;
+            size_t dot_pos = s.find('.');
+            if (dot_pos != std::string::npos) {
+                s.erase(n->value.find_last_not_of('0') + 1, std::string::npos);
+                if (s.back() == '.') {
+                    s.pop_back();
+                }
+            }
+            out << s;
+        }
             break;
         case Node::Type::Variable:
             out << n->value;

@@ -5,7 +5,7 @@
 #include <cmath>
 #include <stdexcept>
 #include <string>
-#include "../../Util/ASTUtil.hpp"
+#include "../../Util/inc/ASTUtil.hpp"
 
 double Evaluator::evaluate(const std::shared_ptr<Node>& node) {
     error.clear();

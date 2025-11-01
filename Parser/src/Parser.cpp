@@ -7,7 +7,7 @@
 #include <algorithm>
 #include <ranges>
 #include <unordered_set>
-#include "../../Util/ASTUtil.hpp"
+#include "../../Util/inc/ASTUtil.hpp"
 #include "../inc/ParserErrors.hpp"
 
 std::pair<int, int> getBindingPower(const Token &token, bool isPrefix = false) {
@@ -47,7 +47,7 @@ std::vector<std::shared_ptr<Node> > Parser::parse(Lexer &lexer) {
         }
         if (lexer.peek().type == Token::Type::Eof) break;
 
-        auto statement_node = parseStatement(lexer);
+        auto statement_node = simplify(parseStatement(lexer));
         if (!statement_node) {
             statements.clear();
             return statements;
@@ -194,7 +194,6 @@ std::shared_ptr<Node> Parser::parseRhs(Lexer &lexer, std::shared_ptr<Node>& lhs,
             lexer.skip();
             op->children.push_back(std::move(lhs));
             lhs = std::move(op);
-            lhs = simplify(std::move(lhs));
             if (lexer.peek().type == Token::Type::Word || lexer.peek().type == Token::Type::Number) {
                 Token temp{Token::Type::Symbol, "*", token.line, lexer.peek().pos - 1, token.line_content};
                 lexer.addToken(temp);
@@ -212,7 +211,6 @@ std::shared_ptr<Node> Parser::parseRhs(Lexer &lexer, std::shared_ptr<Node>& lhs,
         op->children.push_back(std::move(lhs));
         op->children.push_back(std::move(rhs));
         lhs = std::move(op);
-        lhs = simplify(std::move(lhs));
     }
     return std::move(lhs);
 }
@@ -338,7 +336,7 @@ std::shared_ptr<Node> Parser::parsePrefixToken(Lexer &lexer, const Token &token)
         return nullptr;
     }
     op->children.push_back(std::move(arg));
-    return simplify(std::move(op));
+    return std::move(op);
 }
 
 std::shared_ptr<Node> Parser::parseOperator(Lexer &lexer, const Token &token, bool& isImplicit) {

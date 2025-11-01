@@ -5,7 +5,7 @@
 #include "../inc/SymbolicEvaluator.hpp"
 
 #include <stdexcept>
-#include "../../Util/ASTUtil.hpp"
+#include "../../Util/inc/ASTUtil.hpp"
 
 void SymbolicEvaluator::registerFunction(const std::shared_ptr<Node>& funcDefNode) {
     if (funcDefNode->type == Node::Type::FunctionAssignment) {
@@ -63,7 +63,7 @@ std::shared_ptr<Node> SymbolicEvaluator::expandNode(const std::shared_ptr<Node>&
         }
     }
 
-    return simplifyNode(expandedNode);
+    return simplify(expandedNode);
 }
 
 
