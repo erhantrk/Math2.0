@@ -10,7 +10,7 @@
 #include "Util/inc/ASTPrint.hpp"
 
 int main() {
-    std::string input = "atan2(x) = x";
+    std::string input = "";
     Lexer lexer(input);
     if (!lexer.getError().empty()) {
         std::cerr << "Lexer Error: " << lexer.getError() << std::endl;

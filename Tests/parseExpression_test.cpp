@@ -874,8 +874,8 @@ TEST_CASE("Function argument is an implicit multiplication") {
 }
 
 TEST_CASE("Multi-argument function with complex expressions as arguments") {
-    Lexer lx("dist(x1, y1, x2, y2) = sqrt((x2-x1)^2 + (y2-y1)^2)\n"
-             "dist(a+1, b*2, c/3, d-4)");
+    Lexer lx("_dist(x_1, y_1, x_2, y_2) = sqrt((x_2-x_1)^2 + (y_2-y_1)^2)\n"
+             "_dist(a+1, b*2, c/3, d-4)");
     Parser parser;
     parser.defineVariable("a");
     parser.defineVariable("b");
@@ -884,7 +884,7 @@ TEST_CASE("Multi-argument function with complex expressions as arguments") {
 
     auto ast = parser.parse(lx);
     REQUIRE(ast.size() == 2);
-    REQUIRE(toLisp(ast.back()) == "(dist (+ 1 a) (* 2 b) (/ c 3) (- d 4))");
+    REQUIRE(toLisp(ast.back()) == "(_dist (+ 1 a) (* 2 b) (/ c 3) (- d 4))");
 }
 
 TEST_CASE("Multi-argument function with nested function calls as arguments") {
@@ -908,8 +908,8 @@ TEST_CASE("Implicit multiplication with multi-argument function call") {
 }
 
 TEST_CASE("Function with many arguments spread across multiple lines") {
-    Lexer lx("avg(a,b,c,d,e) = (a+b+c+d+e)/5\n"
-             " avg(10, \n"
+    Lexer lx("_avg(a,b,c,d,e) = (a+b+c+d+e)/5\n"
+             " _avg(10, \n"
              " 20, \n"
              " 30, \n\n"
              " 40, \n\n"
@@ -918,7 +918,7 @@ TEST_CASE("Function with many arguments spread across multiple lines") {
 
     auto ast = parser.parse(lx);
     REQUIRE(ast.size() == 2);
-    REQUIRE(toLisp(ast.back()) == "(avg 10 20 30 40 50)");
+    REQUIRE(toLisp(ast.back()) == "(_avg 10 20 30 40 50)");
 }
 
 TEST_CASE("Parenthesized implicit multiplication as a function argument") {

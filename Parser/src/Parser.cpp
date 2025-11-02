@@ -356,7 +356,10 @@ std::shared_ptr<Node> Parser::parseOperator(Lexer &lexer, const Token &token, bo
         } else {
             op = Node::createNode(lexer.peek(), *this);
         }
-    } else if (lexer.peek().type == Token::Type::Word && token.type == Token::Type::Number) {
+    } else if (
+            (token.type == Token::Type::Number && lexer.peek().type == Token::Type::Word)
+        ||  (token.type == Token::Type::Word && lexer.peek().type == Token::Type::Word)
+        ||  (token.type == Token::Type::Word && lexer.peek().type == Token::Type::Number)) {
         Token temp{Token::Type::Symbol, "*", token.line, lexer.peek().pos - 1, token.line_content};
         op = Node::createNode(temp, *this);
         lexer.addToken(temp);
