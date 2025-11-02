@@ -9,7 +9,7 @@
 #include <vector>
 #include "../../Node/inc/Node.hpp"
 
-class Evaluator {
+class Evaluator_test {
 public:
     double evaluate(const std::shared_ptr<Node>& node);
     [[nodiscard]] std::string getError() const;

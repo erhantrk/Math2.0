@@ -8,7 +8,7 @@ using Type = Token::Type;
 
 Lexer::Lexer(const std::string &input) {
     std::vector<std::pair<Type, std::regex> > token_specification = {
-        {Type::Number, std::regex(R"(\d+(\.\d+)?([eE][+-]?\d+)?)")},
+        {Type::Number, std::regex(R"(\d+(\.\d*)?([eE][+-]?\d+)?)")},
         {Type::Symbol, std::regex(R"([!=\+\-\*/\^\(\)])")},
         {Type::Word, std::regex(R"(\b(pi|sin|cos|tan|log|ln|sqrt|abs|atan2)\b)")},
         {Type::Word, std::regex(R"((_\w*)|([a-zA-Z]_\w*)|([a-zA-Z]))")},

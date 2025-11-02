@@ -5,12 +5,12 @@
 
 #include "Lexer/inc/Lexer.hpp"
 #include "Parser/inc/Parser.hpp"
-#include "Evaluator/inc/Evaluator.hpp"
+#include "Evaluator/inc/Evaluator_test.hpp"
 #include "SymbolicEvaluator/inc/SymbolicEvaluator.hpp"
 #include "Util/inc/ASTPrint.hpp"
 
 int main() {
-    std::string input = "";
+    std::string input = "0 / x";
     Lexer lexer(input);
     if (!lexer.getError().empty()) {
         std::cerr << "Lexer Error: " << lexer.getError() << std::endl;
@@ -25,7 +25,7 @@ int main() {
         return 1;
     }
 
-    Evaluator evaluator;
+    Evaluator_test evaluator;
     SymbolicEvaluator sEvaluator;
 
     for (const auto& node : ast) {

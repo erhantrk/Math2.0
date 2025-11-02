@@ -49,5 +49,5 @@ public:
     std::string getError();
 
     void clearError();
-    
+
 };

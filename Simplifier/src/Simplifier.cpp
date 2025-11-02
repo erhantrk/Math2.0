@@ -426,6 +426,17 @@ std::shared_ptr<Node> Simplifier::simplifyNode(std::shared_ptr<Node> node) { // 
     // 2. --- Constant Folding ---
     node = std::move(constantFoldNode(node));
 
+    // We need pre simplification of 0 / x and x / inf cases
+    if (node->children.size() == 2) {
+        auto& lhs = node->children[0];
+        auto& rhs = node->children[1];
+        const std::string& op = node->value;
+        if (op == "/") {
+            if (rhs->value == "inf") return Node::createNode(0.0f);
+            if (isNumber(lhs) && getValue(lhs) == 0.0) return Node::createNode(0.0f);
+        }
+    }
+
     // 3. --- DISPATCHER ---
     if (node->type == Node::Type::Operand && (node->value == "+" || node->value == "-")) {
         node = std::move(simplifySum(node));
@@ -453,6 +464,10 @@ std::shared_ptr<Node> Simplifier::simplifyNode(std::shared_ptr<Node> node) { // 
             // x * 0 -> 0 or 0 * x -> 0
             if ((isNumber(rhs) && getValue(rhs) == 0.0) || (isNumber(lhs) && getValue(lhs) == 0.0))
                 return Node::createNode(0.0);
+        }
+        else if (op == "/") {
+            if (rhs->value == "inf") return Node::createNode(0.0f);
+            if (isNumber(lhs) && getValue(lhs) == 0.0) return Node::createNode(0.0f);
         }
         else if (op == "+") {
             // x + 0 -> x
