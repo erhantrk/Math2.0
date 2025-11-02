@@ -176,7 +176,7 @@ static void toHumanReadableImpl(const Node* n, std::ostringstream& out, int pare
             else {
                 int currentPrec = getOperatorPrecedence(op);
                 if (currentPrec < parentPrecedence) out << "(";
-                toHumanReadableImpl(n->children[0].get(), out, currentPrec);
+                toHumanReadableImpl(n->children[0].get(), out, currentPrec+1);
 
                 for (size_t i = 1; i < n->children.size(); ++i) {
                     if (!(op == "*" && lastNodeNumber)) {
@@ -187,7 +187,7 @@ static void toHumanReadableImpl(const Node* n, std::ostringstream& out, int pare
                             out << op;
                         }
                     }
-                    toHumanReadableImpl(n->children[i].get(), out, currentPrec);
+                    toHumanReadableImpl(n->children[i].get(), out, currentPrec+1);
                 }
                 if (currentPrec < parentPrecedence) out << ")";
             }

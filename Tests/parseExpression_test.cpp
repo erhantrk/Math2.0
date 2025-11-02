@@ -184,7 +184,7 @@ TEST_CASE("Nested implicit multiplication") {
     parser.defineVariable("y");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(* (* (* 2 (+ 1 x)) 3) (+ 2 y))");
+    REQUIRE(toLisp(ast[0]) == "(* (* 6 (+ 1 x)) (+ 2 y))");
 }
 
 TEST_CASE("Implicit multiplication of parenthesized expressions across newlines") {
@@ -278,7 +278,7 @@ TEST_CASE("Complex expression with unary minus and factorial") {
     parser.defineVariable("z");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(* (- (- x) y) (! z))"); /* For now this is good, after adding factorization this will be better */
+    REQUIRE(toLisp(ast[0]) == "(* (! z) (- (- x) y))"); /* For now this is good, after adding factorization this will be better */
 }
 
 TEST_CASE("Complex expression with functions and factorials") {
@@ -316,7 +316,7 @@ TEST_CASE("Chained division") {
     parser.defineVariable("c");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(/ (/ a b) c)");
+    REQUIRE(toLisp(ast[0]) == "(/ a (* b c))");
 }
 
 TEST_CASE("Chained subtraction") {
@@ -368,7 +368,7 @@ TEST_CASE("Mixed precedence with parentheses") {
     parser.defineVariable("d");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(* (* a (+ b c)) d)");
+    REQUIRE(toLisp(ast[0]) == "(* (* (+ b c) a) d)");
 }
 
 TEST_CASE("Implicit multiplication with nested parentheses") {
@@ -431,7 +431,7 @@ TEST_CASE("Implicit multiplication of functions") {
     parser.defineVariable("y");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(* (sin x) (cos y))");
+    REQUIRE(toLisp(ast[0]) == "(* (cos y) (sin x))");
 }
 
 TEST_CASE("Implicit multiplication of number and factorial") {
@@ -541,7 +541,7 @@ TEST_CASE("Deeply nested parentheses with mixed operators and newlines") {
     parser.defineVariable("f");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(* a (+ (/ (- c d) (+ e f)) b))");
+    REQUIRE(toLisp(ast[0]) == "(* (+ (/ (- c d) (+ e f)) b) a)");
 }
 
 TEST_CASE("Multiline implicit multiplication with factorial") {
@@ -551,7 +551,7 @@ TEST_CASE("Multiline implicit multiplication with factorial") {
     parser.defineVariable("y");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(* (* 2 (+ x y)) (! (* 3 x)))");
+    REQUIRE(toLisp(ast[0]) == "(* (* 2 (! (* 3 x))) (+ x y))");
 }
 
 TEST_CASE("Multiline function call with factorial") {
@@ -618,7 +618,7 @@ TEST_CASE("Factorial of function call with multiplication") {
     parser.defineVariable("x");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(* (! (sin x)) 2)");
+    REQUIRE(toLisp(ast[0]) == "(* 2 (! (sin x)))");
 }
 
 TEST_CASE("Implicit multiplication with parenthesized factorial") {
@@ -708,7 +708,7 @@ TEST_CASE("Multiple statements") {
     Parser parser;
     auto ast = parser.parse(lx);
     REQUIRE(ast.size() >= 2);
-    REQUIRE(toLisp(ast.back()) == "(= y (* x (! (+ 1 x))))");
+    REQUIRE(toLisp(ast.back()) == "(= y (* (! (+ 1 x)) x))");
 }
 
 TEST_CASE("Simple function definition") {
@@ -815,7 +815,7 @@ TEST_CASE("Function with multiple arguments and expressions") {
     parser.defineVariable("y");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(atan2 (* y 2) (/ x 3))");
+    REQUIRE(toLisp(ast[0]) == "(atan2 (* 2 y) (/ x 3))");
 }
 
 TEST_CASE("Nested function calls without parentheses") {
@@ -884,7 +884,7 @@ TEST_CASE("Multi-argument function with complex expressions as arguments") {
 
     auto ast = parser.parse(lx);
     REQUIRE(ast.size() == 2);
-    REQUIRE(toLisp(ast.back()) == "(dist (+ 1 a) (* b 2) (/ c 3) (- d 4))");
+    REQUIRE(toLisp(ast.back()) == "(dist (+ 1 a) (* 2 b) (/ c 3) (- d 4))");
 }
 
 TEST_CASE("Multi-argument function with nested function calls as arguments") {
@@ -904,7 +904,7 @@ TEST_CASE("Implicit multiplication with multi-argument function call") {
 
     auto ast = parser.parse(lx);
     REQUIRE(ast.size() == 2);
-    REQUIRE(toLisp(ast.back()) == "(! (* (* 2 (! (f a b))) 6))");
+    REQUIRE(toLisp(ast.back()) == "(! (* 12 (! (f a b))))");
 }
 
 TEST_CASE("Function with many arguments spread across multiple lines") {

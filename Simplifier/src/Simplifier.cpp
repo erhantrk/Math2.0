@@ -5,7 +5,7 @@
 #include "../inc/Simplifier.hpp"
 #include "../../Util/inc/ASTUtil.hpp"
 
-std::pair<double, std::shared_ptr<Node>> Simplifier::getTermParts(const std::shared_ptr<Node>& node) { // NOLINT(*-no-recursion)
+TermData Simplifier::getTermParts(const std::shared_ptr<Node>& node) { // NOLINT(*-no-recursion)
     if (isNumber(node)) {
         return {getValue(node), nullptr};
     }
@@ -14,29 +14,38 @@ std::pair<double, std::shared_ptr<Node>> Simplifier::getTermParts(const std::sha
         auto leftParts = getTermParts(node->children[0]);
         auto rightParts = getTermParts(node->children[1]);
 
-        double newCoeff = leftParts.first * rightParts.first;
+        double newCoefficient = leftParts.coefficient * rightParts.coefficient;
 
         std::shared_ptr<Node> newVarPart = nullptr;
-        if (leftParts.second == nullptr) {
-            newVarPart = rightParts.second;
-        } else if (rightParts.second == nullptr) {
-            newVarPart = leftParts.second;
+        if (leftParts.variablePart == nullptr) {
+            newVarPart = rightParts.variablePart;
+        } else if (rightParts.variablePart == nullptr) {
+            newVarPart = leftParts.variablePart;
         } else {
             newVarPart = std::make_shared<Node>(Node::Type::Operand, "*");
-            newVarPart->children.push_back(leftParts.second);
-            newVarPart->children.push_back(rightParts.second);
+            newVarPart->children.push_back(leftParts.variablePart);
+            newVarPart->children.push_back(rightParts.variablePart);
         }
 
-        return {newCoeff, newVarPart};
+        return {newCoefficient, newVarPart};
     }
 
     if (node->type == Node::Type::Operand && node->value == "-" && node->children.size() == 1) {
         auto parts = getTermParts(node->children[0]);
-        parts.first *= -1.0;
+        parts.coefficient *= -1.0;
         return parts;
     }
 
     return {1.0, node};
+}
+
+static Factor getFactorParts(const std::shared_ptr<Node>& node) {
+    if (node->type == Node::Type::Operand && node->value == "^") {
+        if (isNumber(node->children[1])) {
+            return {node->children[0], getValue(node->children[1])};
+        }
+    }
+    return {node, 1.0};
 }
 
 void Simplifier::collectSumTermsImpl(const std::shared_ptr<Node>& node, double currentSign, std::list<Term>& terms) { // NOLINT(*-no-recursion)
@@ -65,8 +74,8 @@ void Simplifier::collectSumTermsImpl(const std::shared_ptr<Node>& node, double c
 
     auto parts = getTermParts(node);
 
-    double finalCoefficient = parts.first * currentSign;
-    std::shared_ptr<Node> variablePart = parts.second;
+    double finalCoefficient = parts.coefficient * currentSign;
+    std::shared_ptr<Node> variablePart = parts.variablePart;
 
     terms.emplace_back(finalCoefficient, variablePart);
 }
@@ -106,7 +115,7 @@ std::shared_ptr<Node> Simplifier::simplifySum(const std::shared_ptr<Node>& node)
     std::map<std::string, TermData> finalTerms;
     for (const auto& term : expandedTerms) {
         std::string key = term.getKey();
-        finalTerms[key].totalCoefficient += term.coefficient;
+        finalTerms[key].coefficient += term.coefficient;
         if (finalTerms[key].variablePart == nullptr) {
             finalTerms[key].variablePart = term.variablePart;
         }
@@ -115,29 +124,29 @@ std::shared_ptr<Node> Simplifier::simplifySum(const std::shared_ptr<Node>& node)
     std::shared_ptr<Node> root = nullptr;
     for (auto const& [key, data] : finalTerms) {
 
-        if (data.totalCoefficient == 0.0) {
+        if (data.coefficient == 0.0) {
             continue;
         }
         std::shared_ptr<Node> termNode = nullptr;
 
         if (key == "##CONST##") {
-            termNode = Node::createNode(data.totalCoefficient);
+            termNode = Node::createNode(data.coefficient);
         } else {
-            if (data.totalCoefficient == 1.0) {
+            if (data.coefficient == 1.0) {
                 termNode = data.variablePart;
-            }else if (data.totalCoefficient == -1.0) {
+            }else if (data.coefficient == -1.0) {
                 termNode = std::make_shared<Node>(Node::Type::Operand, "-");
                 termNode->children.push_back(data.variablePart);
             }else {
                 termNode = std::make_shared<Node>(Node::Type::Operand, "*");
-                termNode->children.push_back(Node::createNode(data.totalCoefficient));
+                termNode->children.push_back(Node::createNode(data.coefficient));
                 termNode->children.push_back(data.variablePart);
             }
         }
 
         if (root == nullptr) {
             root = termNode;
-        } else if (data.totalCoefficient >= 0){
+        } else if (data.coefficient >= 0){
             auto newRoot = std::make_shared<Node>(Node::Type::Operand, "+");
             newRoot->children.push_back(root);
             newRoot->children.push_back(termNode);
@@ -159,20 +168,125 @@ std::shared_ptr<Node> Simplifier::simplifySum(const std::shared_ptr<Node>& node)
     return root;
 }
 
-std::shared_ptr<Node> Simplifier::simplifyNode(std::shared_ptr<Node> node) { // NOLINT(*-no-recursion)
-    if (!node) {
-        return nullptr;
+void Simplifier::collectProductTermsImpl(const std::shared_ptr<Node>& node, double currentPower, std::list<Factor>& factors) { // NOLINT(*-no-recursion)
+    if (node->type == Node::Type::Operand && node->value == "*") {
+        collectProductTermsImpl(node->children[0], currentPower, factors);
+        collectProductTermsImpl(node->children[1], currentPower, factors);
+        return;
     }
 
-    for (auto& child : node->children) {
-        child = simplifyNode(child);
+    if (node->type == Node::Type::Operand && node->value == "/") {
+        collectProductTermsImpl(node->children[0], currentPower, factors);
+        collectProductTermsImpl(node->children[1], -currentPower, factors);
+        return;
     }
 
-    if (node->type != Node::Type::Operand) {
-        return node;
+    auto parts = getFactorParts(node);
+
+    parts.power *= currentPower;
+
+    factors.emplace_back(parts.base, parts.power);
+}
+
+std::list<Factor> Simplifier::collectProductTerms(const std::shared_ptr<Node>& node) {
+    std::list<Factor> factors;
+    collectProductTermsImpl(node, 1.0, factors);
+    return factors;
+}
+
+std::shared_ptr<Node> Simplifier::simplifyProduct(const std::shared_ptr<Node> &node) { // NOLINT(*-no-recursion)
+    std::list<Factor> collectedFactors = collectProductTerms(node);
+
+    double totalCoefficient = 1.0;
+    std::map<std::string, FactorData> finalFactors;
+
+    for (auto& factor : collectedFactors) {
+        if (isNumber(factor.base)) {
+            totalCoefficient *= std::pow(getValue(factor.base), factor.power);
+        } else {
+            std::string key = factor.getKey();
+            finalFactors[key].totalPower += factor.power;
+            if (finalFactors[key].base == nullptr) {
+                finalFactors[key].base = factor.base;
+            }
+        }
     }
 
-    // 2. --- Constant Folding ---
+    std::list<std::shared_ptr<Node>> numeratorFactors;
+    std::list<std::shared_ptr<Node>> denominatorFactors;
+
+    double invCoefficient = 1.0 / totalCoefficient;
+    if (invCoefficient == std::floor(invCoefficient) && invCoefficient != 1.0) {
+        denominatorFactors.push_back(Node::createNode(invCoefficient));
+    } else if (totalCoefficient != 1.0) {
+        numeratorFactors.push_back(Node::createNode(totalCoefficient));
+    }
+
+    for (auto const& [key, data] : finalFactors) {
+        if (data.totalPower == 0.0) {
+            continue;
+        }
+
+        if (data.totalPower > 0) {
+            if (data.totalPower == 1.0) {
+                numeratorFactors.push_back(data.base);
+            } else {
+                const auto pwrOp = Node::createNode(Token(Token::Type::Symbol,"^"));
+                const auto pwr = Node::createNode(data.totalPower);
+                pwrOp->children.push_back(data.base);
+                pwrOp->children.push_back(pwr);
+                numeratorFactors.push_back(pwrOp);
+            }
+        } else if (data.totalPower < 0) {
+            if (data.totalPower == -1.0) {
+                denominatorFactors.push_back(data.base);
+            } else {
+                const auto pwrOp = Node::createNode(Token(Token::Type::Symbol,"^"));
+                const auto pwr = Node::createNode(-data.totalPower);
+                pwrOp->children.push_back(data.base);
+                pwrOp->children.push_back(pwr);
+                denominatorFactors.push_back(pwrOp);
+            }
+        }
+    }
+
+    std::shared_ptr<Node> numTree = nullptr;
+    if (numeratorFactors.empty()) {
+        numTree = Node::createNode(1.0);
+    } else {
+        numTree = numeratorFactors.front();
+        numeratorFactors.pop_front();
+        while(!numeratorFactors.empty()) {
+            auto newRoot = std::make_shared<Node>(Node::Type::Operand, "*");
+            newRoot->children.push_back(numTree);
+            newRoot->children.push_back(numeratorFactors.front());
+            numeratorFactors.pop_front();
+            numTree = newRoot;
+        }
+    }
+
+    if (denominatorFactors.empty()) {
+        return numTree;
+    }
+
+    std::shared_ptr<Node> denTree = denominatorFactors.front();
+    denominatorFactors.pop_front();
+    while(!denominatorFactors.empty()) {
+        auto newRoot = std::make_shared<Node>(Node::Type::Operand, "*");
+        newRoot->children.push_back(denTree);
+        newRoot->children.push_back(denominatorFactors.front());
+        denominatorFactors.pop_front();
+        denTree = newRoot;
+    }
+
+    auto finalRoot = std::make_shared<Node>(Node::Type::Operand, "/");
+    finalRoot->children.push_back(simplifyNode(numTree));
+    finalRoot->children.push_back(simplifyNode(denTree));
+
+    return finalRoot;
+}
+
+static std::shared_ptr<Node> constantFoldNode(std::shared_ptr<Node> node) {
     bool allChildrenAreNumbers = !node->children.empty();
     for (const auto& child : node->children) {
         if (!isNumber(child)) {
@@ -208,18 +322,36 @@ std::shared_ptr<Node> Simplifier::simplifyNode(std::shared_ptr<Node> node) { // 
                 return Node::createNode(factorial(getValue(node->children[0])));
             }
         } catch (const std::exception& _) {
-            return node; // Failed to fold
+            return node;
         }
     }
+    return node;
+}
+
+std::shared_ptr<Node> Simplifier::simplifyNode(std::shared_ptr<Node> node) { // NOLINT(*-no-recursion)
+    if (!node) {
+        return nullptr;
+    }
+
+    for (auto& child : node->children) {
+        child = simplifyNode(child);
+    }
+
+    if (node->type != Node::Type::Operand) {
+        return node;
+    }
+
+    // 2. --- Constant Folding ---
+    node = std::move(constantFoldNode(node));
 
     // 3. --- DISPATCHER ---
     if (node->type == Node::Type::Operand && (node->value == "+" || node->value == "-")) {
         node = std::move(simplifySum(node));
     }
 
-    // if (node->type == Node::Type::Operand && (node->value == "*" || node->value == "/")) {
-    //     return simplifyProduct(node);
-    // }
+    if (node->type == Node::Type::Operand && (node->value == "*" || node->value == "/")) {
+        node = simplifyProduct(node);
+    }
 
     // 4. --- Algebraic Simplification ---
     if (node->children.size() == 2) {
