@@ -45,7 +45,6 @@ struct FactorData {
 
 class Simplifier {
     static TermData getTermParts(const std::shared_ptr<Node>& node);
-
     static void collectSumTermsImpl(const std::shared_ptr<Node>& node, double currentSign, std::list<Term>& terms);
     static std::list<Term> collectSumTerms(const std::shared_ptr<Node>& node);
     static bool isSum(const Term& term);
@@ -57,6 +56,9 @@ class Simplifier {
     static bool isProduct(const Factor& factor);
     static std::list<Factor> expandFactor(const Factor& factor);
     static std::shared_ptr<Node> simplifyProduct(const std::shared_ptr<Node> &node);
+
+    static std::shared_ptr<Node> simplifyPower(const std::shared_ptr<Node> &node);
+    static std::shared_ptr<Node> constantFoldNode(std::shared_ptr<Node> node);
 
     static std::shared_ptr<Node> simplifyNode(std::shared_ptr<Node> node);
 public:

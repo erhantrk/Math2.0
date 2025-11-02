@@ -306,7 +306,7 @@ std::shared_ptr<Node> Simplifier::simplifyProduct(const std::shared_ptr<Node> &n
     return finalRoot;
 }
 
-static std::shared_ptr<Node> constantFoldNode(std::shared_ptr<Node> node) {
+std::shared_ptr<Node> Simplifier::constantFoldNode(std::shared_ptr<Node> node) {
     bool allChildrenAreNumbers = !node->children.empty();
     for (const auto& child : node->children) {
         if (!isNumber(child)) {
@@ -348,6 +348,68 @@ static std::shared_ptr<Node> constantFoldNode(std::shared_ptr<Node> node) {
     return node;
 }
 
+std::shared_ptr<Node> Simplifier::simplifyPower(const std::shared_ptr<Node>& node) { // NOLINT(*-no-recursion)
+    auto& base = node->children[0];
+    auto& exponent = node->children[1];
+
+    //(a * b)^n -> (a^n) * (b^n)
+    if (base->type == Node::Type::Operand && base->value == "*") {
+        auto& a = base->children[0];
+        auto& b = base->children[1];
+
+        auto newLeft = std::make_shared<Node>(Node::Type::Operand, "^");
+        newLeft->children.push_back(a);
+        newLeft->children.push_back(exponent);
+
+        auto newRight = std::make_shared<Node>(Node::Type::Operand, "^");
+        newRight->children.push_back(b);
+        newRight->children.push_back(exponent);
+
+        auto newProduct = std::make_shared<Node>(Node::Type::Operand, "*");
+        newProduct->children.push_back(newLeft);
+        newProduct->children.push_back(newRight);
+
+        return simplifyNode(newProduct);
+    }
+
+    // (a / b)^n  ->  (a^n) / (b^n)
+    if (base->type == Node::Type::Operand && base->value == "/") {
+        auto& a = base->children[0];
+        auto& b = base->children[1];
+
+        auto newNum = std::make_shared<Node>(Node::Type::Operand, "^");
+        newNum->children.push_back(a);
+        newNum->children.push_back(exponent);
+
+        auto newDen = std::make_shared<Node>(Node::Type::Operand, "^");
+        newDen->children.push_back(b);
+        newDen->children.push_back(exponent);
+
+        auto newDivision = std::make_shared<Node>(Node::Type::Operand, "/");
+        newDivision->children.push_back(newNum);
+        newDivision->children.push_back(newDen);
+
+        return simplifyNode(newDivision);
+    }
+
+    // (a^m)^n -> a^(m*n)
+    if (base->type == Node::Type::Operand && base->value == "^") {
+        auto& a = base->children[0];
+        auto& m = base->children[1];
+
+        auto newExponent = std::make_shared<Node>(Node::Type::Operand, "*");
+        newExponent->children.push_back(m);
+        newExponent->children.push_back(exponent);
+
+        auto newPower = std::make_shared<Node>(Node::Type::Operand, "^");
+        newPower->children.push_back(a);
+        newPower->children.push_back(newExponent);
+
+        return simplifyNode(newPower);
+    }
+
+    return node;
+}
 std::shared_ptr<Node> Simplifier::simplifyNode(std::shared_ptr<Node> node) { // NOLINT(*-no-recursion)
     if (!node) {
         return nullptr;
@@ -371,6 +433,10 @@ std::shared_ptr<Node> Simplifier::simplifyNode(std::shared_ptr<Node> node) { // 
 
     if (node->type == Node::Type::Operand && (node->value == "*" || node->value == "/")) {
         node = std::move(simplifyProduct(node));
+    }
+
+    if (node->type == Node::Type::Operand && node->value == "^") {
+        node = std::move(simplifyPower(node));
     }
 
     // 4. --- Algebraic Simplification ---
