@@ -71,6 +71,10 @@ std::shared_ptr<Node> Parser::parseStatement(Lexer &lexer) {
     bool isFunctionDef = isFunctionDefinition(lexer);
     std::pair<std::string, std::vector<std::string>> function = {};
     if (isFunctionDef) {
+        if (preDefinedFunctions.contains(lexer.peek().value)){
+            error = ParserError::AssignmentToPredefinedFunction(lexer.peek().value, lexer.peek());
+            return nullptr;
+        }
         function =  parseFunctionDefinition(lexer);
     }
 

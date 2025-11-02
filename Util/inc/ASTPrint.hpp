@@ -208,12 +208,12 @@ static void toHumanReadableImpl(const Node* n, std::ostringstream& out, int pare
             int currentPrec = 0;
             if (currentPrec < parentPrecedence) out << "(";
 
-            out << n->value << "(";
+            out << n->value;
             for (size_t i = 0; i < n->children.size() - 1; ++i) {
                 if (i > 0) out << ", ";
                 toHumanReadableImpl(n->children[i].get(), out, PREC_NONE);
             }
-            out << ") = ";
+            out << " = ";
 
             if (!n->children.empty()) {
                 toHumanReadableImpl(n->children.back().get(), out, currentPrec);

@@ -30,6 +30,8 @@ public:
 
     static std::string AssignmentToLiteralValue(const std::string &var, const Token &token);
 
+    static std::string AssignmentToPredefinedFunction(const std::string &fun, const Token &token);
+
     static std::string MissingAssignment(const Token &operator_token);
 
     static std::string UndefinedVariable(const Token &as, const std::string &variableName);

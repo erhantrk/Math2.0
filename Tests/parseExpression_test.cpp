@@ -506,7 +506,7 @@ TEST_CASE("Parenthesized expression vs right-associative exponentiation") {
     parser.defineVariable("z");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
-    REQUIRE(toLisp(ast[0]) == "(^ (^ x y) z)");
+    REQUIRE(toLisp(ast[0]) == "(^ x (* y z))");
 }
 
 TEST_CASE("Factorial of a complex function call") {

@@ -215,3 +215,12 @@ std::string ParserError::AssignmentToLiteralValue(const std::string &var, const 
     oss << "    " << std::string(token.pos, ' ') << "^-- Cannot assign to this variable.";
     return oss.str();
 }
+
+std::string ParserError::AssignmentToPredefinedFunction(const std::string &fun, const Token &token) {
+    std::ostringstream oss;
+    oss << "Assigment to predefined function '" + fun + "'.\n";
+    oss << "--> at line " << token.line << ":\n";
+    oss << "    " << token.line_content << "\n";
+    oss << "    " << std::string(token.pos, ' ') << "^-- Cannot assign to this function.";
+    return oss.str();
+}
