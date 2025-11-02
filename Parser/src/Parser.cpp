@@ -482,8 +482,3 @@ std::string Parser::getError() {
 void Parser::clearError() {
     error.clear();
 }
-
-void Parser::defineVariable(const std::string& name) {
-    variables.emplace(name);
-}
-

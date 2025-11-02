@@ -79,7 +79,6 @@ TEST_CASE("Double negative") {
 TEST_CASE("Chained unary minus") {
     Lexer lx("---x");
     Parser parser;
-    parser.defineVariable("x");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(- x)");
@@ -88,7 +87,6 @@ TEST_CASE("Chained unary minus") {
 TEST_CASE("Unary minus on a function call without parentheses") {
     Lexer lx("-sin x");
     Parser parser;
-    parser.defineVariable("x");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(- (sin x))");
@@ -97,7 +95,6 @@ TEST_CASE("Unary minus on a function call without parentheses") {
 TEST_CASE("Unary plus with factorial") {
     Lexer lx("+x!");
     Parser parser;
-    parser.defineVariable("x");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(! x)");
@@ -114,8 +111,6 @@ TEST_CASE("Double factorial") {
 TEST_CASE("Factorial with parentheses") {
     Lexer lx("(x+y)!");
     Parser parser;
-    parser.defineVariable("x");
-    parser.defineVariable("y");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(! (+ x y))");
@@ -124,7 +119,6 @@ TEST_CASE("Factorial with parentheses") {
 TEST_CASE("Unary minus with factorial") {
     Lexer lx("-x!");
     Parser parser;
-    parser.defineVariable("x");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(- (! x))");
@@ -133,7 +127,6 @@ TEST_CASE("Unary minus with factorial") {
 TEST_CASE("Simple function call tan") {
     Lexer lx("tan(x)");
     Parser parser;
-    parser.defineVariable("x");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(tan x)");
@@ -150,8 +143,6 @@ TEST_CASE("Simple function call log") {
 TEST_CASE("Function call with expression") {
     Lexer lx("sqrt(x^2 + y^2)");
     Parser parser;
-    parser.defineVariable("x");
-    parser.defineVariable("y");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(sqrt (+ (^ x 2) (^ y 2)))");
@@ -160,7 +151,6 @@ TEST_CASE("Function call with expression") {
 TEST_CASE("Implicit multiplication with function") {
     Lexer lx("2sin(x)");
     Parser parser;
-    parser.defineVariable("x");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(* 2 (sin x))");
@@ -169,9 +159,6 @@ TEST_CASE("Implicit multiplication with function") {
 TEST_CASE("Implicit multiplication with a unary minus on a parenthesized expression") {
     Lexer lx("-(x+y)(z-1)");
     Parser parser;
-    parser.defineVariable("x");
-    parser.defineVariable("y");
-    parser.defineVariable("z");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(* (- (- x) y) (- z 1))");
@@ -180,8 +167,6 @@ TEST_CASE("Implicit multiplication with a unary minus on a parenthesized express
 TEST_CASE("Nested implicit multiplication") {
     Lexer lx("2(x+1)3(y+2)");
     Parser parser;
-    parser.defineVariable("x");
-    parser.defineVariable("y");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(* (* 6 (+ 1 x)) (+ 2 y))");
@@ -190,8 +175,6 @@ TEST_CASE("Nested implicit multiplication") {
 TEST_CASE("Implicit multiplication of parenthesized expressions across newlines") {
     Lexer lx("(x+1)\n(y+2)");
     Parser parser;
-    parser.defineVariable("x");
-    parser.defineVariable("y");
     auto ast = parser.parse(lx);
     REQUIRE(ast.size() == 2);
     REQUIRE(toLisp(ast[0]) == "(+ 1 x)");
@@ -201,8 +184,6 @@ TEST_CASE("Implicit multiplication of parenthesized expressions across newlines"
 TEST_CASE("Implicit multiplication after function call across newline") {
     Lexer lx("sin(x)\n(y+1)");
     Parser parser;
-    parser.defineVariable("x");
-    parser.defineVariable("y");
     auto ast = parser.parse(lx);
     REQUIRE(ast.size() == 2);
     REQUIRE(toLisp(ast[0]) == "(sin x)");
@@ -212,7 +193,6 @@ TEST_CASE("Implicit multiplication after function call across newline") {
 TEST_CASE("Chained function calls") {
     Lexer lx("sin cos tan x");
     Parser parser;
-    parser.defineVariable("x");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(sin (cos (tan x)))");
@@ -221,8 +201,6 @@ TEST_CASE("Chained function calls") {
 TEST_CASE("Implicit multiplication with parentheses") {
     Lexer lx("(x+1)(y+2)");
     Parser parser;
-    parser.defineVariable("x");
-    parser.defineVariable("y");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(* (+ 1 x) (+ 2 y))");
@@ -231,10 +209,6 @@ TEST_CASE("Implicit multiplication with parentheses") {
 TEST_CASE("Simple assignment") {
     Lexer lx("y = m*x + c");
     Parser parser;
-    parser.defineVariable("y");
-    parser.defineVariable("m");
-    parser.defineVariable("x");
-    parser.defineVariable("c");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(= y (+ (* m x) c))");
@@ -243,9 +217,6 @@ TEST_CASE("Simple assignment") {
 TEST_CASE("Assignment with complex expression") {
     Lexer lx("x = -b / (2a)");
     Parser parser;
-    parser.defineVariable("x");
-    parser.defineVariable("b");
-    parser.defineVariable("a");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(= x (/ (- b) (* 2 a)))");
@@ -263,8 +234,6 @@ TEST_CASE("Assignment to a variable that is then used in another assignment") {
 TEST_CASE("Complex polynomial") {
     Lexer lx("3x^2 + 2y - 1");
     Parser parser;
-    parser.defineVariable("x");
-    parser.defineVariable("y");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(+ (+ -1 (* 3 (^ x 2))) (* 2 y))");
@@ -273,9 +242,6 @@ TEST_CASE("Complex polynomial") {
 TEST_CASE("Complex expression with unary minus and factorial") {
     Lexer lx("-(x+y)*z!");
     Parser parser;
-    parser.defineVariable("x");
-    parser.defineVariable("y");
-    parser.defineVariable("z");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(* (! z) (- (- x) y))"); /* For now this is good, after adding factorization this will be better */
@@ -284,8 +250,6 @@ TEST_CASE("Complex expression with unary minus and factorial") {
 TEST_CASE("Complex expression with functions and factorials") {
     Lexer lx("sin(x!) ^ cos(y!)");
     Parser parser;
-    parser.defineVariable("x");
-    parser.defineVariable("y");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(^ (sin (! x)) (cos (! y)))");
@@ -302,7 +266,6 @@ TEST_CASE("Number notations") {
 TEST_CASE("Predefined constants in expressions") {
     Lexer lx("2 * pi * r");
     Parser parser;
-    parser.defineVariable("r");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(* (* 2 pi) r)");
@@ -311,9 +274,6 @@ TEST_CASE("Predefined constants in expressions") {
 TEST_CASE("Chained division") {
     Lexer lx("a / b / c");
     Parser parser;
-    parser.defineVariable("a");
-    parser.defineVariable("b");
-    parser.defineVariable("c");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(/ a (* b c))");
@@ -322,9 +282,6 @@ TEST_CASE("Chained division") {
 TEST_CASE("Chained subtraction") {
     Lexer lx("a - b - c");
     Parser parser;
-    parser.defineVariable("a");
-    parser.defineVariable("b");
-    parser.defineVariable("c");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(- (- a b) c)");
@@ -333,7 +290,6 @@ TEST_CASE("Chained subtraction") {
 TEST_CASE("Function with unary minus argument") {
     Lexer lx("sin -x");
     Parser parser;
-    parser.defineVariable("x");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(sin (- x))");
@@ -350,10 +306,6 @@ TEST_CASE("Factorial of factorial") {
 TEST_CASE("Mixed precedence addition and multiplication") {
     Lexer lx("a + b * c + d");
     Parser parser;
-    parser.defineVariable("a");
-    parser.defineVariable("b");
-    parser.defineVariable("c");
-    parser.defineVariable("d");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(+ (+ (* b c) a) d)");
@@ -362,10 +314,6 @@ TEST_CASE("Mixed precedence addition and multiplication") {
 TEST_CASE("Mixed precedence with parentheses") {
     Lexer lx("a * (b + c) * d");
     Parser parser;
-    parser.defineVariable("a");
-    parser.defineVariable("b");
-    parser.defineVariable("c");
-    parser.defineVariable("d");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(* (* (+ b c) a) d)");
@@ -382,9 +330,6 @@ TEST_CASE("Implicit multiplication with nested parentheses") {
 TEST_CASE("Implicit multiplication of variables in parentheses") {
     Lexer lx("(x)(y)(z)");
     Parser parser;
-    parser.defineVariable("x");
-    parser.defineVariable("y");
-    parser.defineVariable("z");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(* (* x y) z)");
@@ -417,8 +362,6 @@ TEST_CASE("Complex mixed arithmetic") {
 TEST_CASE("Implicit multiplication of factorial and variable") {
     Lexer lx("x!y");
     Parser parser;
-    parser.defineVariable("x");
-    parser.defineVariable("y");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(* (! x) y)");
@@ -427,8 +370,6 @@ TEST_CASE("Implicit multiplication of factorial and variable") {
 TEST_CASE("Implicit multiplication of functions") {
     Lexer lx("sin(x)cos(y)");
     Parser parser;
-    parser.defineVariable("x");
-    parser.defineVariable("y");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(* (cos y) (sin x))");
@@ -437,7 +378,6 @@ TEST_CASE("Implicit multiplication of functions") {
 TEST_CASE("Implicit multiplication of number and factorial") {
     Lexer lx("3x!");
     Parser parser;
-    parser.defineVariable("x");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(* 3 (! x))");
@@ -454,7 +394,6 @@ TEST_CASE("Function call without parentheses") {
 TEST_CASE("Multiplication with unary minus variable") {
     Lexer lx("2 * -x");
     Parser parser;
-    parser.defineVariable("x");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(* 2 (- x))");
@@ -463,7 +402,6 @@ TEST_CASE("Multiplication with unary minus variable") {
 TEST_CASE("Chained unary operators") {
     Lexer lx("+-x");
     Parser parser;
-    parser.defineVariable("x");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(- x)");
@@ -472,7 +410,6 @@ TEST_CASE("Chained unary operators") {
 TEST_CASE("Implicit multiplication with number and parenthesized factorial") {
     Lexer lx("2(x!)");
     Parser parser;
-    parser.defineVariable("x");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(* 2 (! x))");
@@ -481,7 +418,6 @@ TEST_CASE("Implicit multiplication with number and parenthesized factorial") {
 TEST_CASE("Division with parenthesized expression") {
     Lexer lx("1 / (x+1)");
     Parser parser;
-    parser.defineVariable("x");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(/ 1 (+ 1 x))");
@@ -490,9 +426,6 @@ TEST_CASE("Division with parenthesized expression") {
 TEST_CASE("Right-associative exponentiation with factorial") {
     Lexer lx("x^y^z!");
     Parser parser;
-    parser.defineVariable("x");
-    parser.defineVariable("y");
-    parser.defineVariable("z");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(^ x (^ y (! z)))");
@@ -501,9 +434,6 @@ TEST_CASE("Right-associative exponentiation with factorial") {
 TEST_CASE("Parenthesized expression vs right-associative exponentiation") {
     Lexer lx("(x^y)^z");
     Parser parser;
-    parser.defineVariable("x");
-    parser.defineVariable("y");
-    parser.defineVariable("z");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(^ x (* y z))");
@@ -512,10 +442,6 @@ TEST_CASE("Parenthesized expression vs right-associative exponentiation") {
 TEST_CASE("Factorial of a complex function call") {
     Lexer lx("sin( (x+y) / (a-b) )!");
     Parser parser;
-    parser.defineVariable("x");
-    parser.defineVariable("y");
-    parser.defineVariable("a");
-    parser.defineVariable("b");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(! (sin (/ (+ x y) (- a b))))");
@@ -533,12 +459,6 @@ TEST_CASE("Multiline parentheses") {
 TEST_CASE("Deeply nested parentheses with mixed operators and newlines") {
     Lexer lx("a * (b + \n (c - d) / \n (e + f))");
     Parser parser;
-    parser.defineVariable("a");
-    parser.defineVariable("b");
-    parser.defineVariable("c");
-    parser.defineVariable("d");
-    parser.defineVariable("e");
-    parser.defineVariable("f");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(* (+ (/ (- c d) (+ e f)) b) a)");
@@ -547,8 +467,6 @@ TEST_CASE("Deeply nested parentheses with mixed operators and newlines") {
 TEST_CASE("Multiline implicit multiplication with factorial") {
     Lexer lx("(2(x +\n y)\n (3x)!)");
     Parser parser;
-    parser.defineVariable("x");
-    parser.defineVariable("y");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(* (* 2 (! (* 3 x))) (+ x y))");
@@ -557,8 +475,6 @@ TEST_CASE("Multiline implicit multiplication with factorial") {
 TEST_CASE("Multiline function call with factorial") {
     Lexer lx("sin(\n x * y\n)!");
     Parser parser;
-    parser.defineVariable("x");
-    parser.defineVariable("y");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(! (sin (* x y)))");
@@ -567,7 +483,6 @@ TEST_CASE("Multiline function call with factorial") {
 TEST_CASE("Multiline assignment") {
     Lexer lx("a = (\n 1 + (2 * 3)\n - 4\n)");
     Parser parser;
-    parser.defineVariable("a");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(= a 3)");
@@ -576,8 +491,6 @@ TEST_CASE("Multiline assignment") {
 TEST_CASE("Implicit multiplication after factorial") {
     Lexer lx("x! y");
     Parser parser;
-    parser.defineVariable("x");
-    parser.defineVariable("y");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(* (! x) y)");
@@ -586,8 +499,6 @@ TEST_CASE("Implicit multiplication after factorial") {
 TEST_CASE("Implicit multiplication after parenthesized factorial") {
     Lexer lx("(x)!y");
     Parser parser;
-    parser.defineVariable("x");
-    parser.defineVariable("y");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(* (! x) y)");
@@ -596,8 +507,6 @@ TEST_CASE("Implicit multiplication after parenthesized factorial") {
 TEST_CASE("Implicit multiplication with factorial and parentheses") {
     Lexer lx("(x+1)!(y+2)");
     Parser parser;
-    parser.defineVariable("x");
-    parser.defineVariable("y");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(* (! (+ 1 x)) (+ 2 y))");
@@ -606,7 +515,6 @@ TEST_CASE("Implicit multiplication with factorial and parentheses") {
 TEST_CASE("Implicit multiplication number and variable factorial") {
     Lexer lx("2x!");
     Parser parser;
-    parser.defineVariable("x");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(* 2 (! x))");
@@ -615,7 +523,6 @@ TEST_CASE("Implicit multiplication number and variable factorial") {
 TEST_CASE("Factorial of function call with multiplication") {
     Lexer lx("sin(x)! * 2");
     Parser parser;
-    parser.defineVariable("x");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(* 2 (! (sin x)))");
@@ -624,7 +531,6 @@ TEST_CASE("Factorial of function call with multiplication") {
 TEST_CASE("Implicit multiplication with parenthesized factorial") {
     Lexer lx("3(x!)");
     Parser parser;
-    parser.defineVariable("x");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(* 3 (! x))");
@@ -633,7 +539,6 @@ TEST_CASE("Implicit multiplication with parenthesized factorial") {
 TEST_CASE("Function call without parentheses on factorial") {
     Lexer lx("sin x!");
     Parser parser;
-    parser.defineVariable("x");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(sin (! x))");
@@ -650,7 +555,6 @@ TEST_CASE("Factorial of function call") {
 TEST_CASE("Function call with factorial argument") {
     Lexer lx("sin(x!)");
     Parser parser;
-    parser.defineVariable("x");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(sin (! x))");
@@ -675,8 +579,6 @@ TEST_CASE("Factorial of function call without parentheses") {
 TEST_CASE("Implicit multiplication of function and variable") {
     Lexer lx("sin(x)y");
     Parser parser;
-    parser.defineVariable("x");
-    parser.defineVariable("y");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(* (sin x) y)");
@@ -685,8 +587,6 @@ TEST_CASE("Implicit multiplication of function and variable") {
 TEST_CASE("Implicit multiplication of parenthesized function and variable") {
     Lexer lx("(sin x)y");
     Parser parser;
-    parser.defineVariable("x");
-    parser.defineVariable("y");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(* (sin x) y)");
@@ -695,9 +595,6 @@ TEST_CASE("Implicit multiplication of parenthesized function and variable") {
 TEST_CASE("Complex expression with unary minus and factorials") {
     Lexer lx("-sin(x+y)! ^ -cos(z)");
     Parser parser;
-    parser.defineVariable("x");
-    parser.defineVariable("y");
-    parser.defineVariable("z");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(- (^ (! (sin (+ x y))) (- (cos z))))");
@@ -811,8 +708,6 @@ TEST_CASE("Function calling inside function with newlines") {
 TEST_CASE("Function with multiple arguments and expressions") {
     Lexer lx("atan2(y*2, x/3)");
     Parser parser;
-    parser.defineVariable("x");
-    parser.defineVariable("y");
     auto ast = parser.parse(lx);
     REQUIRE(!ast.empty());
     REQUIRE(toLisp(ast[0]) == "(atan2 (* 2 y) (/ x 3))");
@@ -824,7 +719,6 @@ TEST_CASE("Nested function calls without parentheses") {
                       "h(c)=c\n"
                       "f g h x");
     Parser parser;
-    parser.defineVariable("x");
     auto ast = parser.parse(lx);
     REQUIRE(ast.size() == 4);
     REQUIRE(toLisp(ast.back()) == "(f (g (h x)))");
@@ -836,9 +730,6 @@ TEST_CASE("Mixed style nested function calls") {
                       "h(d)=d\n"
                       "f(g x, h(y))");
     Parser parser;
-    parser.defineVariable("x");
-    parser.defineVariable("y");
-
     auto ast = parser.parse(lx);
     REQUIRE(ast.size() == 4);
     REQUIRE(toLisp(ast.back()) == "(f (g x) (h y))");
@@ -853,9 +744,6 @@ TEST_CASE("Deeply nested mixed-style calls") {
              "n(a)=a\n"
              "f(g(h k l), m n o)");
     Parser parser;
-    parser.defineVariable("l");
-    parser.defineVariable("o");
-
     auto ast = parser.parse(lx);
     REQUIRE(ast.size() == 7);
     REQUIRE(toLisp(ast.back()) == "(f (g (h (k l))) (m (n o)))");
@@ -864,10 +752,6 @@ TEST_CASE("Deeply nested mixed-style calls") {
 TEST_CASE("Function argument is an implicit multiplication") {
     Lexer lx("f(a,b)=a+b\n f(x^y, 2z)");
     Parser parser;
-    parser.defineVariable("x");
-    parser.defineVariable("y");
-    parser.defineVariable("z");
-
     auto ast = parser.parse(lx);
     REQUIRE(ast.size() == 2);
     REQUIRE(toLisp(ast.back()) == "(f (^ x y) (* 2 z))");
@@ -877,11 +761,6 @@ TEST_CASE("Multi-argument function with complex expressions as arguments") {
     Lexer lx("_dist(x_1, y_1, x_2, y_2) = sqrt((x_2-x_1)^2 + (y_2-y_1)^2)\n"
              "_dist(a+1, b*2, c/3, d-4)");
     Parser parser;
-    parser.defineVariable("a");
-    parser.defineVariable("b");
-    parser.defineVariable("c");
-    parser.defineVariable("d");
-
     auto ast = parser.parse(lx);
     REQUIRE(ast.size() == 2);
     REQUIRE(toLisp(ast.back()) == "(_dist (+ 1 a) (* 2 b) (/ c 3) (- d 4))");
@@ -899,9 +778,6 @@ TEST_CASE("Multi-argument function with nested function calls as arguments") {
 TEST_CASE("Implicit multiplication with multi-argument function call") {
     Lexer lx("f(x,y)=x+y\n (2f(a, b)! * 3!)!");
     Parser parser;
-    parser.defineVariable("a");
-    parser.defineVariable("b");
-
     auto ast = parser.parse(lx);
     REQUIRE(ast.size() == 2);
     REQUIRE(toLisp(ast.back()) == "(! (* 12 (! (f a b))))");
@@ -924,9 +800,6 @@ TEST_CASE("Function with many arguments spread across multiple lines") {
 TEST_CASE("Parenthesized implicit multiplication as a function argument") {
     Lexer lx("f(a,b)=a+b\n f((x+1)(x-1), y)");
     Parser parser;
-    parser.defineVariable("x");
-    parser.defineVariable("y");
-
     auto ast = parser.parse(lx);
     REQUIRE(ast.size() == 2);
     REQUIRE(toLisp(ast.back()) == "(f (* (+ 1 x) (- x 1)) y)");

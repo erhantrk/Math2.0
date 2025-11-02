@@ -49,7 +49,5 @@ public:
     std::string getError();
 
     void clearError();
-
-    /* For tests */
-    void defineVariable(const std::string& name);
+    
 };
