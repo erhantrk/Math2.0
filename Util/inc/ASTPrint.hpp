@@ -110,6 +110,7 @@ static bool isUnary(const Node* n) {
 }
 
 static void toHumanReadableImpl(const Node* n, std::ostringstream& out, int parentPrecedence) {
+    static bool lastNodeNumber = false;
     if (!n) {
         out << "<null>";
         return;
@@ -127,9 +128,11 @@ static void toHumanReadableImpl(const Node* n, std::ostringstream& out, int pare
             }
             out << s;
         }
+            lastNodeNumber = true;
             break;
         case Node::Type::Variable:
             out << n->value;
+            lastNodeNumber = false;
             break;
         case Node::Type::Parameter: {
             size_t separator_pos = n->value.find('-');
@@ -138,6 +141,7 @@ static void toHumanReadableImpl(const Node* n, std::ostringstream& out, int pare
             } else {
                 out << n->value;
             }
+            lastNodeNumber = false;
             break;
         }
         case Node::Type::Assignment: {
@@ -148,16 +152,23 @@ static void toHumanReadableImpl(const Node* n, std::ostringstream& out, int pare
             toHumanReadableImpl(n->children[0].get(), out, currentPrec);
 
             if (currentPrec < parentPrecedence) out << ")";
+            lastNodeNumber = false;
             break;
         }
         case Node::Type::Operand: {
             const std::string& op = n->value;
 
+
             if (isUnary(n)) {
                 int currentPrec = PREC_UNARY;
                 if (currentPrec < parentPrecedence) out << "(";
-                out << op;
-                toHumanReadableImpl(n->children[0].get(), out, currentPrec);
+                if (op == "!") {
+                    toHumanReadableImpl(n->children[0].get(), out, currentPrec);
+                    out << op;
+                }else {
+                    out << op;
+                    toHumanReadableImpl(n->children[0].get(), out, currentPrec);
+                }
                 if (currentPrec < parentPrecedence) {
                     out << ")";
                 }
@@ -168,11 +179,19 @@ static void toHumanReadableImpl(const Node* n, std::ostringstream& out, int pare
                 toHumanReadableImpl(n->children[0].get(), out, currentPrec);
 
                 for (size_t i = 1; i < n->children.size(); ++i) {
-                    out << " " << op << " ";
-                    toHumanReadableImpl(n->children[i].get(), out, currentPrec + 1);
+                    if (!(op == "*" && lastNodeNumber)) {
+                        if (op == "+" || op == "-") {
+                            out << " " << op << " ";
+                        }
+                        else {
+                            out << op;
+                        }
+                    }
+                    toHumanReadableImpl(n->children[i].get(), out, currentPrec);
                 }
                 if (currentPrec < parentPrecedence) out << ")";
             }
+            lastNodeNumber = false;
             break;
         }
         case Node::Type::Function: {
@@ -182,6 +201,7 @@ static void toHumanReadableImpl(const Node* n, std::ostringstream& out, int pare
                 toHumanReadableImpl(n->children[i].get(), out, PREC_NONE);
             }
             out << ")";
+            lastNodeNumber = false;
             break;
         }
         case Node::Type::FunctionAssignment: {
@@ -200,9 +220,12 @@ static void toHumanReadableImpl(const Node* n, std::ostringstream& out, int pare
             }
 
             if (currentPrec < parentPrecedence) out << ")";
+            lastNodeNumber = false;
             break;
         }
-        default: break;
+        default:
+            lastNodeNumber = false;
+            break;
     }
 }
 

@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <ranges>
 #include <unordered_set>
+
+#include "../../Simplifier/inc/Simplifier.hpp"
 #include "../../Util/inc/ASTUtil.hpp"
 #include "../inc/ParserErrors.hpp"
 
@@ -47,7 +49,7 @@ std::vector<std::shared_ptr<Node> > Parser::parse(Lexer &lexer) {
         }
         if (lexer.peek().type == Token::Type::Eof) break;
 
-        auto statement_node = simplify(parseStatement(lexer));
+        auto statement_node = Simplifier::simplify(parseStatement(lexer));
         if (!statement_node) {
             statements.clear();
             return statements;

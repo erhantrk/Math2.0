@@ -10,5 +10,6 @@
 #include "../../Node/inc/Node.hpp"
 
 double factorial(double n);
-
-std::shared_ptr<Node> simplify(const std::shared_ptr<Node>& node);
+std::string takeNegative(const std::string& value);
+bool isNumber(const std::shared_ptr<Node>& node);
+double getValue(const std::shared_ptr<Node>& node);

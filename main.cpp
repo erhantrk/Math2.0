@@ -1,17 +1,16 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include <cmath>
 #include <memory>
 
 #include "Lexer/inc/Lexer.hpp"
 #include "Parser/inc/Parser.hpp"
 #include "Evaluator/inc/Evaluator.hpp"
-#include "SymbolicEvaluator/inc/SymbolicEvaluator.hpp"   // <-- Include new expander
+#include "SymbolicEvaluator/inc/SymbolicEvaluator.hpp"
 #include "Util/inc/ASTPrint.hpp"
 
 int main() {
-    std::string input = "2x + 5x -1 + 5";
+    std::string input = "a - b - c";
     Lexer lexer(input);
     if (!lexer.getError().empty()) {
         std::cerr << "Lexer Error: " << lexer.getError() << std::endl;
