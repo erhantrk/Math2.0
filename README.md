@@ -1,53 +1,70 @@
-# Math2.0
+# Math2.0: A Symbolic Math Engine
 
-Math2.0 is an advanced C++ project that parses mathematical expressions given as text, understands them, and converts them into a structural tree (AST — Abstract Syntax Tree). The project supports many fundamental features a modern parser should have, such as operator precedence, parentheses, functions, variable assignments, and detailed error handling.
+Math2.0 is a robust, modular C++ mathematical expression engine. It parses, evaluates, and symbolically manipulates complex mathematical expressions, correctly handling operator precedence, variables, and user-defined functions.
+
+The project is built around a clean AST (Abstract Syntax Tree) and features a **hybrid evaluation system**: it first attempts numerical evaluation, and if it fails (e.g., due to undefined variables), it falls back to symbolic manipulation.
+
+---
+
+## Core Components
+
+The engine is divided into five main modules:
+
+* **Lexer:** A token generator that converts raw string input into a stream of tokens (Numbers, Symbols, Words, etc.).
+* **Parser:** A recursive-descent parser that consumes tokens and builds an Abstract Syntax Tree (AST), correctly handling operator precedence, associativity, prefix/postfix operators, and implicit multiplication.
+* **Evaluator:** A tree-walking evaluator that recursively calculates the numerical result of an AST.
+* **Simplifier:** An algebraic simplifier that applies rules to an AST to reduce complexity (e.g., constant folding, `x + x -> 2*x`, `x^0 -> 1`).
+* **SymbolicEvaluator:** Expands user-defined functions and variables within the AST, creating a new, expanded tree for further simplification or evaluation.
+
+---
 
 ## Key Features
 
-- **Operator Precedence and Associativity:** Processes standard operators like `+`, `-`, `*`, `/`, `^` (exponentiation) according to mathematical rules.
-- **Comprehensive Operator Support:**
-    - **Prefix Operators:** Unary operators such as `+5`, `-x`.
-    - **Postfix Operators:** Suffix operators such as `x!` (factorial).
-- **Variable Support:** You can make assignments like `x = 10` and use these variables in expressions such as `2 * x`. Predefined constants like `e` and `pi` are available.
-- **Functions:** Supports built‑in mathematical functions such as `sin(x)`, `cos(y)`, `sqrt(9)`.
-- **Implicit Multiplication:** Automatically interprets forms like `2x`, `2(x+y)`, or `(x+1)(y+2)` as multiplication.
-- **Parentheses Support:** Fully supports nested parentheses to override default precedence.
-- **Multi‑line Expressions:** Expressions inside parentheses can span multiple lines.
-- **Detailed Error Reporting:** Produces clear, descriptive error messages that show where and why the error occurred.
+* **Full Operator Support:** Correctly handles precedence and associativity for `+`, `-`, `*`, `/`, `^` (power), and `!` (factorial).
+* **Prefix/Postfix:** Handles unary operators like `-x` and postfix operators like `x!`.
+* **Implicit Multiplication:** Automatically detects and inserts multiplication (e.g., `2x`, `2(x+y)`, `(x+1)(y+2)`).
+* **Variables:** Supports variable assignment (`x = 10`) and built-in constants (`pi`, `e`).
+* **User-Defined Functions:** Define and call your own functions (e.g., `f(x) = x^2`, `g(x, y) = f(x) + f(y)`).
+* **Hybrid Evaluation:** The engine intelligently switches between numerical and symbolic processing.
+* **Detailed Error Reporting:** Provides clear, user-friendly error messages that pinpoint the exact location and nature of any syntax error.
 
-## Usage Examples
+---
 
-Below are examples of how Math2.0 converts various mathematical expressions into a Lisp‑like AST format.
+## Examples
 
-| Mathematical Expression   | Generated AST (Lisp Format)     |
-|---------------------------|---------------------------------|
-| `2 + 3 * 4`               | `(+ 2 (* 3 4))`                 |
-| `(2 + 3) * 4`             | `(* (+ 2 3) 4)`                 |
-| `2x^3`                    | `(* 2 (^ x 3))`                 |
-| `-sin(x+1)!`              | `(- (! (sin (+ x 1))))`         |
-| `x = 10 + 5` <br> `2 * x` | `(= x (+ 10 5))` <br> `(* 2 x)` |
-| `(a ^ b) ^ c`             | `(^ (^ a b) c)`                 |
-| `sin (x + y)`             | `(sin (+ x y))`                 |
+The system can process a wide variety of inputs.
 
-## Error Handling
+| Mathematical Expression | Generated AST (Lisp Format) |
+|---|---|
+| `2 + 3 * 4` | `14` |
+| `(2 + 3) * 4` | `20` |
+| `2x^3` | `(* 2 (^ x 3))` |
+| `-sin(x+1)!` | `(- (! (sin (+ x 1))))` |
+| `f(x) = x^2` | `(f (^ x 2))` |
+| `g(y) = f(y) + 1` | `(g (+ (f y) 1))` |
 
-When the parser encounters an invalid expression, it does not terminate the program; instead, it provides an explanatory message pinpointing the source of the problem.
+### Error Handling
 
-**Example Invalid Input:** `sin()`
+When the parser encounters an invalid expression, it provides a detailed message:
 
-**Produced Error Message:**
+**Input:** `sin()`
+
+**Error:**
 ```
 An expression was expected inside parentheses, but none was found.
 --> at line 1:
     sin()
        ^-- Expected an expression after this parenthesis
 ```
+---
 
-The project can be built using a standard CMake setup.
+## Build Instructions
+
+The project uses a standard CMake setup.
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/erhantrk/Math2.0
+git clone [https://github.com/erhantrk/Math2.0](https://github.com/erhantrk/Math2.0)
 cd math2.0
 
 # 2. Create a build directory and enter it
@@ -60,15 +77,11 @@ cmake ..
 # 4. Build the project
 make
 
-# 5. Run the main program
+# 5. Run the main program or tests
 ./Math2.0
 ```
 
 You can modify the sample expression in `main.cpp` to run your own tests.
 
 ## Roadmap & Future Improvements
-
-- **Evaluation:** Add an `Evaluator` module that executes the AST to compute the result of the mathematical expression.
-- **More Functions and Constants:** Expand the set of trigonometric and logarithmic functions.
 - **Interactive Console (REPL):** Provide a command‑line interface where users can enter expressions interactively.
-- **User‑Defined Functions:** Allow users to define their own functions such as `f(x) = x^2`.
