@@ -10,7 +10,7 @@
 #include "Util/inc/ASTPrint.hpp"
 
 int main() {
-    std::string input = "-(x+y)*z!";
+    std::string input = "(2*x)^2 + x^2";
     Lexer lexer(input);
     if (!lexer.getError().empty()) {
         std::cerr << "Lexer Error: " << lexer.getError() << std::endl;

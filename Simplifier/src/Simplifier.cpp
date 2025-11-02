@@ -111,7 +111,6 @@ std::shared_ptr<Node> Simplifier::simplifySum(const std::shared_ptr<Node>& node)
         expandedTerms.splice(expandedTerms.end(), distributedTerms);
     }
 
-
     std::map<std::string, TermData> finalTerms;
     for (const auto& term : expandedTerms) {
         std::string key = term.getKey();
@@ -168,16 +167,16 @@ std::shared_ptr<Node> Simplifier::simplifySum(const std::shared_ptr<Node>& node)
     return root;
 }
 
-void Simplifier::collectProductTermsImpl(const std::shared_ptr<Node>& node, double currentPower, std::list<Factor>& factors) { // NOLINT(*-no-recursion)
+void Simplifier::collectProductFactorsImpl(const std::shared_ptr<Node>& node, double currentPower, std::list<Factor>& factors) { // NOLINT(*-no-recursion)
     if (node->type == Node::Type::Operand && node->value == "*") {
-        collectProductTermsImpl(node->children[0], currentPower, factors);
-        collectProductTermsImpl(node->children[1], currentPower, factors);
+        collectProductFactorsImpl(node->children[0], currentPower, factors);
+        collectProductFactorsImpl(node->children[1], currentPower, factors);
         return;
     }
 
     if (node->type == Node::Type::Operand && node->value == "/") {
-        collectProductTermsImpl(node->children[0], currentPower, factors);
-        collectProductTermsImpl(node->children[1], -currentPower, factors);
+        collectProductFactorsImpl(node->children[0], currentPower, factors);
+        collectProductFactorsImpl(node->children[1], -currentPower, factors);
         return;
     }
 
@@ -188,19 +187,40 @@ void Simplifier::collectProductTermsImpl(const std::shared_ptr<Node>& node, doub
     factors.emplace_back(parts.base, parts.power);
 }
 
-std::list<Factor> Simplifier::collectProductTerms(const std::shared_ptr<Node>& node) {
+std::list<Factor> Simplifier::collectProductFactors(const std::shared_ptr<Node>& node) {
     std::list<Factor> factors;
-    collectProductTermsImpl(node, 1.0, factors);
+    collectProductFactorsImpl(node, 1.0, factors);
     return factors;
 }
 
+bool Simplifier::isProduct(const Factor& factor) {
+    if (factor.base == nullptr || factor.base->type != Node::Type::Operand) return false;
+    return factor.base->value == "*" || factor.base->value == "/";
+}
+
+std::list<Factor> Simplifier::expandFactor(const Factor& factor) {
+    if (!isProduct(factor)) {
+        return { factor };
+    }
+    std::list<Factor> innerFactors = collectProductFactors(factor.base);
+    for (auto& innerFactor : innerFactors) {
+        innerFactor.power *= factor.power;
+    }
+    return innerFactors;
+}
+
 std::shared_ptr<Node> Simplifier::simplifyProduct(const std::shared_ptr<Node> &node) { // NOLINT(*-no-recursion)
-    std::list<Factor> collectedFactors = collectProductTerms(node);
+    std::list<Factor> collectedFactors = collectProductFactors(node);
+    std::list<Factor> expandedFactors;
+    for (const auto& factor : collectedFactors) {
+        auto distributedFactors = expandFactor(factor);
+        expandedFactors.splice(expandedFactors.end(), distributedFactors);
+    }
 
     double totalCoefficient = 1.0;
     std::map<std::string, FactorData> finalFactors;
 
-    for (auto& factor : collectedFactors) {
+    for (auto& factor : expandedFactors) {
         if (isNumber(factor.base)) {
             totalCoefficient *= std::pow(getValue(factor.base), factor.power);
         } else {
@@ -350,7 +370,7 @@ std::shared_ptr<Node> Simplifier::simplifyNode(std::shared_ptr<Node> node) { // 
     }
 
     if (node->type == Node::Type::Operand && (node->value == "*" || node->value == "/")) {
-        node = simplifyProduct(node);
+        node = std::move(simplifyProduct(node));
     }
 
     // 4. --- Algebraic Simplification ---

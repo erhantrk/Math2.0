@@ -52,8 +52,10 @@ class Simplifier {
     static std::list<Term> expandTerm(const Term& term);
     static std::shared_ptr<Node> simplifySum(const std::shared_ptr<Node> &node);
 
-    static void collectProductTermsImpl(const std::shared_ptr<Node>& node, double currentPower, std::list<Factor>& factors);
-    static std::list<Factor> collectProductTerms(const std::shared_ptr<Node>& node);
+    static void collectProductFactorsImpl(const std::shared_ptr<Node>& node, double currentPower, std::list<Factor>& factors);
+    static std::list<Factor> collectProductFactors(const std::shared_ptr<Node>& node);
+    static bool isProduct(const Factor& factor);
+    static std::list<Factor> expandFactor(const Factor& factor);
     static std::shared_ptr<Node> simplifyProduct(const std::shared_ptr<Node> &node);
 
     static std::shared_ptr<Node> simplifyNode(std::shared_ptr<Node> node);
