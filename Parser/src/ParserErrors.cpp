@@ -151,6 +151,15 @@ std::string ParserError::InvalidAssignmentTarget(const Token &token) {
     return oss.str();
 }
 
+std::string ParserError::UnkownFunction(const Token &token) {
+    std::ostringstream oss;
+    oss << "Unkown function. This should not happen. Please report this bug.\n";
+    oss << "--> at line " << token.line << ":\n";
+    oss << "    " << token.line_content << "\n";
+    oss << "    " << std::string(token.pos, ' ') << "^-- Unkown function.";
+    return oss.str();
+}
+
 std::string ParserError::UndefinedVariable(const Token &as, const std::string &variableName) {
     size_t var_col = as.line_content.find(variableName, as.pos);
 

@@ -153,7 +153,8 @@ std::shared_ptr<Node> Parser::parseLhs(Lexer &lexer, Token &outToken) { // NOLIN
                          || (token.type == Token::Type::Word)
                          || (token.type == Token::Type::Symbol && token.value[0] == '(')
                          || Token::isTokenPreFix(token)
-                         || (Token::isNewline(token) && parenthesesLevel);
+                         || (Token::isNewline(token) && parenthesesLevel)
+                         || (token.type == Token::Type::Derivative);
     if (!isValid) {
         return nullptr;
     }
@@ -171,6 +172,8 @@ std::shared_ptr<Node> Parser::parseLhs(Lexer &lexer, Token &outToken) { // NOLIN
         lhs = parseFunction(lexer, token);
     } else if (Token::isTokenPreFix(token)) {
         lhs = parsePrefixToken(lexer, token);
+    } else if (token.type == Token::Type::Derivative) {
+        lhs = parseDerivative(lexer, token);
     } else {
         lhs = Node::createNode(token, *this);
     }
@@ -254,8 +257,11 @@ std::shared_ptr<Node> Parser::parseFunction(Lexer &lexer, const Token &token) { 
     int argCount = 0;
     if (preDefinedFunctions.contains(token.value)) {
         argCount = static_cast<int>(preDefinedFunctions.at(token.value).size());
-    }else if (functions.contains(token.value)) {
+    } else if (functions.contains(token.value)) {
         argCount = static_cast<int>(functions.at(token.value).size());
+    } else {
+        error = ParserError::UnkownFunction(token);
+        return nullptr;
     }
 
     const Token &pl = lexer.peek();
@@ -377,6 +383,52 @@ std::shared_ptr<Node> Parser::parseOperator(Lexer &lexer, const Token &token, bo
         return nullptr;
     }
     return std::move(op);
+}
+
+std::shared_ptr<Node> Parser::parseDerivative(Lexer &lexer, const Token &token) { // NOLINT(*-no-recursion)
+    std::string var = token.value.substr(3);
+    auto derivNode = std::make_shared<Node>(Node::Type::Derivative, var);
+
+    const Token &pl = lexer.peek();
+    if (pl.type != Token::Type::Symbol || pl.value[0] != '(') {
+        if (error.empty())
+            error = ParserError::NoArg(lexer, token);
+        return nullptr;
+    }
+
+    parenthesesLevel++;
+    lexer.skip();
+
+    std::shared_ptr<Node> expression = parseExpression(lexer, 0);
+
+    const Token &pr = lexer.peek();
+    if (pr.type != Token::Type::Symbol || pr.value[0] != ')') {
+        if (!error.empty())
+            return nullptr;
+        if (!expression)
+            error = ParserError::EmptyParen(pl);
+        else
+            error = ParserError::MissingParen(lexer, pl);
+        return nullptr;
+    }
+
+    lexer.skip();
+    parenthesesLevel--;
+
+    if (!expression) {
+        if (error.empty())
+            error = ParserError::EmptyParen(pl);
+        return nullptr;
+    }
+
+    derivNode->children.push_back(std::move(expression));
+
+    if (lexer.peek().type == Token::Type::Number || lexer.peek().type == Token::Type::Word) {
+        Token temp{Token::Type::Symbol, "*", token.line, token.pos, token.line_content};
+        lexer.addToken(temp);
+    }
+
+    return derivNode;
 }
 
 std::pair<std::string, std::vector<std::string>> Parser::parseFunctionDefinition(Lexer &lexer) { // NOLINT(*-no-recursion)

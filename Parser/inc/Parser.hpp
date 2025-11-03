@@ -19,6 +19,7 @@ class Parser {
     std::shared_ptr<Node> parseFunction(Lexer &lexer, const Token &token);
     std::shared_ptr<Node> parsePrefixToken(Lexer &lexer, const Token &token);
     std::shared_ptr<Node> parseOperator(Lexer &lexer, const Token &token, bool& outToken);
+    std::shared_ptr<Node> parseDerivative(Lexer &lexer, const Token &token);
 
     std::shared_ptr<Node> parseStatement(Lexer &lexer);
     [[nodiscard]] bool isFunctionDefinition(const Lexer &lexer) const;

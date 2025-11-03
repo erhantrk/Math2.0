@@ -28,6 +28,8 @@ public:
 
     static std::string InvalidAssignmentTarget(const Token &token);
 
+    static std::string UnkownFunction(const Token &token);
+
     static std::string AssignmentToLiteralValue(const std::string &var, const Token &token);
 
     static std::string AssignmentToPredefinedFunction(const std::string &fun, const Token &token);

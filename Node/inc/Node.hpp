@@ -10,7 +10,7 @@
 class Parser;
 
 struct Node {
-    enum class Type { Number, Variable, Operand, Function, Assignment, FunctionAssignment, Parameter, FunctionExpression};
+    enum class Type { Number, Variable, Operand, Function, Assignment, FunctionAssignment, Parameter, FunctionExpression, Derivative};
 
     Type type;
     std::string value;

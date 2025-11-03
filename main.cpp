@@ -58,9 +58,10 @@ void processInput(const std::string& input, Parser& parser, Evaluator& evaluator
                 sEvaluator.registerVariable(std::make_pair(node->value, val));
             }
         } else {
-            std::cout << "Expanding: " << toHumanReadable(node) << '\n';
+            if (node->type == Node::Type::Function) {
+                std::cout << "Expanding: " << toHumanReadable(node) << '\n';
+            }
             auto expandedNode = sEvaluator.expand(node);
-            std::cout << "--> " << toLisp(expandedNode) << '\n';
             std::cout << "--> " << toHumanReadable(expandedNode) << '\n';
         }
     }

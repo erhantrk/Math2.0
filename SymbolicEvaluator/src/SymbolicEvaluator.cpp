@@ -39,8 +39,8 @@ std::shared_ptr<Node> SymbolicEvaluator::expandNode(const std::shared_ptr<Node>&
         auto it = functions.find(expandedNode->value);
 
         if (it != functions.end()) {
-            auto funcDefNode = it->second; // This is the FunctionAssignment node
-            auto funcBody = funcDefNode->children[0]; // This is the body AST
+            auto funcDefNode = it->second;
+            auto funcBody = funcDefNode->children[0];
             const auto& arguments = expandedNode->children;
             auto clonedBody = funcBody->clone();
             auto substitutedBody = substituteParameters(clonedBody, arguments);
@@ -63,6 +63,11 @@ std::shared_ptr<Node> SymbolicEvaluator::expandNode(const std::shared_ptr<Node>&
             expandedNode->type = Node::Type::Number;
         }
     }
+    else if (expandedNode->type == Node::Type::Derivative){
+        auto expanded_child = expandNode(node->children[0]);
+        auto differentiated_node = differentiate(expanded_child, node->value);
+        return expandNode(differentiated_node);
+    }
 
     return Simplifier::simplify(expandedNode);
 }
@@ -78,7 +83,7 @@ std::shared_ptr<Node> SymbolicEvaluator::substituteParameters(const std::shared_
         if (separator_pos == std::string::npos) {
             throw std::runtime_error("Invalid parameter format: " + body->value);
         }
-        int index = std::stoi(body->value.substr(0, separator_pos)); // "0-x" -> 0
+        int index = std::stoi(body->value.substr(0, separator_pos));
 
         if (index >= arguments.size()) {
             throw std::runtime_error("Function argument index out of bounds.");

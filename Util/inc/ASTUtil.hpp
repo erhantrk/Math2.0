@@ -13,3 +13,4 @@ double factorial(double n);
 std::string takeNegative(const std::string& value);
 bool isNumber(const std::shared_ptr<Node>& node);
 double getValue(const std::shared_ptr<Node>& node);
+std::shared_ptr<Node> differentiate(const std::shared_ptr<Node>& node, const std::string& var);
