@@ -1,13 +1,13 @@
 //
 // Created by Erhan Türker on 10/17/25.
 //
-#include "../inc/Evaluator_test.hpp"
+#include "../inc/Evaluator.hpp"
 #include <cmath>
 #include <stdexcept>
 #include <string>
 #include "../../Util/inc/ASTUtil.hpp"
 
-double Evaluator_test::evaluate(const std::shared_ptr<Node>& node) {
+double Evaluator::evaluate(const std::shared_ptr<Node>& node) {
     error.clear();
     callStack.clear();
     try {
@@ -21,11 +21,11 @@ double Evaluator_test::evaluate(const std::shared_ptr<Node>& node) {
     }
 }
 
-std::string Evaluator_test::getError() const {
+std::string Evaluator::getError() const {
     return error;
 }
 
-double Evaluator_test::evaluateNode(const std::shared_ptr<Node>& node) { // NOLINT(*-no-recursion)
+double Evaluator::evaluateNode(const std::shared_ptr<Node>& node) { // NOLINT(*-no-recursion)
     if (!node) {
         throw std::runtime_error("Encountered a null node during evaluation.");
     }
