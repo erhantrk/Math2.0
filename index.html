@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Math2.0 Interface</title>
+    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+    <style>
+        body { font-family: monospace; background: #1e1e1e; color: #d4d4d4; padding: 20px; display: flex; flex-direction: column; height: 95vh; margin: 0; }
+        #terminal { flex-grow: 1; background: #121212; border: 1px solid #333; padding: 15px; overflow-y: auto; margin-bottom: 10px; border-radius: 5px; }
+        .input-row { display: flex; gap: 10px; }
+        input { flex-grow: 1; padding: 10px; background: #2d2d2d; border: 1px solid #3c3c3c; color: white; font-family: inherit; }
+        button { padding: 10px 20px; background: #0e639c; color: white; border: none; cursor: pointer; }
+        
+        .user-line { color: #569cd6; margin-top: 5px; }
+        .sys-line { color: #b5cea8; white-space: pre-wrap; margin-bottom: 10px; }
+        .error { color: #f48771; }
+        .graph-div { width: 100%; height: 400px; margin: 10px 0; background: white; }
+    </style>
+</head>
+<body>
+
+    <div id="terminal">
+        <div class="sys-line">Math Engine Connected.</div>
+        <div class="sys-line">Usage:</div>
+        <div class="sys-line">  1. Define: f(x) = x * x</div>
+        <div class="sys-line">  2. Calc:   f(5)</div>
+        <div class="sys-line">  3. Graph:  plot f(x)</div>
+    </div>
+
+    <div class="input-row">
+        <input type="text" id="cmd" placeholder="Enter command..." autocomplete="off">
+        <button onclick="handleInput()">Run</button>
+    </div>
+
+    <script>
+        const term = document.getElementById('terminal');
+        const cmdInput = document.getElementById('cmd');
+
+        cmdInput.addEventListener("keypress", (e) => { if(e.key==="Enter") handleInput(); });
+
+        async function handleInput() {
+            const raw = cmdInput.value.trim();
+            if (!raw) return;
+            
+            log(raw, "user-line");
+            cmdInput.value = "";
+
+            // --- CLIENT-SIDE LOGIC FOR "PLOT" ---
+            if (raw.startsWith("plot ")) {
+                await handlePlotCommand(raw.substring(5)); // Send content after "plot "
+                return;
+            }
+
+            // --- STANDARD LOGIC FOR EVERYTHING ELSE ---
+            await sendToCpp(raw);
+        }
+
+        // Calls C++ to just run the code
+        async function sendToCpp(code) {
+            try {
+                const res = await fetch('/api/calculate', {
+                    method: 'POST',
+                    body: JSON.stringify({ code: code })
+                });
+                const data = await res.json();
+                if (data.result && data.result.trim() !== "") {
+                    log(data.result, "sys-line");
+                }
+                return data.result;
+            } catch (e) {
+                log("Connection Error", "error");
+                return "";
+            }
+        }
+
+        // The "Smart" Frontend Graphing Logic
+        async function handlePlotCommand(expression) {
+            log("Calculating graph data...", "sys-line");
+
+            // 1. Generate X values
+            const xValues = [];
+            const start = -10, end = 10, step = 0.5;
+            
+            // 2. Construct a BATCH script for C++
+            // We want to verify what "f(x)" is for every X.
+            // We assume the expression is a function call like "f(x)" or a formula "x*x"
+            // We will inject the variable 'x' before every calculation.
+            
+            let batchCode = "";
+            for (let x = start; x <= end; x += step) {
+                // To support "plot x^2", we first set x, then run the expression
+                batchCode += `x = ${x.toFixed(2)}\n`; 
+                batchCode += `${expression}\n`; 
+            }
+
+            // 3. Send the HUGE batch to C++
+            const rawOutput = await sendToCpp(batchCode);
+            
+            // 4. Parse the HUGE output to find Y values
+            // The output will look like: "x = -10 \n 100 \n x = -9.9 \n 98.01 ..."
+            const lines = rawOutput.split('\n');
+            const yValues = [];
+            
+            for(let line of lines) {
+                line = line.trim();
+                // We only care about pure numbers (the results), not the "x = ..." assignments
+                if (line && !line.includes("=") && !line.includes("Defined")) {
+                    const val = parseFloat(line);
+                    if (!isNaN(val)) {
+                        yValues.push(val);
+                        xValues.push((start + (step * yValues.length - step))); // Sync X with found Y
+                    }
+                }
+            }
+
+            // 5. Draw
+            drawGraph(xValues, yValues, expression);
+        }
+
+        function drawGraph(xArr, yArr, title) {
+            const div = document.createElement('div');
+            div.className = 'graph-div';
+            term.appendChild(div);
+
+            Plotly.newPlot(div, [{
+                x: xArr,
+                y: yArr,
+                type: 'scatter',
+                mode: 'lines+markers',
+                line: {shape: 'spline', color: '#569cd6'}
+            }], {
+                title: title,
+                margin: { t: 40, b: 40, l: 40, r: 20 },
+                paper_bgcolor: '#fff',
+                plot_bgcolor: '#fff'
+            });
+            term.scrollTop = term.scrollHeight;
+        }
+
+        function log(txt, cls) {
+            const d = document.createElement('div');
+            d.textContent = txt;
+            d.className = cls;
+            term.appendChild(d);
+            term.scrollTop = term.scrollHeight;
+        }
+    </script>
+</body>
+</html>
