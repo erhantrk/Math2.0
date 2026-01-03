@@ -2,148 +2,338 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Math2.0 Interface</title>
+    <title>Parser Interface</title>
     <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+
     <style>
-        body { font-family: monospace; background: #1e1e1e; color: #d4d4d4; padding: 20px; display: flex; flex-direction: column; height: 95vh; margin: 0; }
-        #terminal { flex-grow: 1; background: #121212; border: 1px solid #333; padding: 15px; overflow-y: auto; margin-bottom: 10px; border-radius: 5px; }
-        .input-row { display: flex; gap: 10px; }
-        input { flex-grow: 1; padding: 10px; background: #2d2d2d; border: 1px solid #3c3c3c; color: white; font-family: inherit; }
-        button { padding: 10px 20px; background: #0e639c; color: white; border: none; cursor: pointer; }
-        
-        .user-line { color: #569cd6; margin-top: 5px; }
-        .sys-line { color: #b5cea8; white-space: pre-wrap; margin-bottom: 10px; }
-        .error { color: #f48771; }
-        .graph-div { width: 100%; height: 400px; margin: 10px 0; background: white; }
+        :root {
+            --bg-color: #f4f4f4;
+            --nav-bg: #1e1e1e;
+            --sidebar-bg: #ffffff;
+            --accent-color: #007acc;
+            --text-color: #333;
+        }
+
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; background: var(--bg-color); }
+
+        /* --- NAVBAR --- */
+        nav {
+            height: 50px; background-color: var(--nav-bg); color: white;
+            display: flex; align-items: center; padding: 0 15px; gap: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 10;
+        }
+
+        .nav-title { font-weight: bold; font-size: 18px; margin-right: auto; color: #ddd; }
+
+        .nav-group { display: flex; align-items: center; gap: 5px; font-size: 14px; }
+        .nav-group input[type="number"] {
+            width: 60px; padding: 4px; border: 1px solid #444;
+            border-radius: 3px; background: #333; color: white; text-align: center;
+        }
+
+        /* Checkbox Style */
+        .checkbox-wrapper {
+            display: flex; align-items: center; gap: 5px; cursor: pointer; user-select: none;
+            border-left: 1px solid #555; padding-left: 15px; margin-left: 5px; height: 30px;
+        }
+
+        .btn {
+            background: #333; color: white; border: 1px solid #555;
+            padding: 5px 12px; cursor: pointer; border-radius: 3px; font-size: 13px;
+        }
+        .btn:hover { background: #444; }
+        .btn-danger { background: #8a2be2; border-color: #6a1b9a; }
+        .btn-warn { background: #d9534f; border-color: #d43f3a; }
+
+        /* --- LAYOUT --- */
+        #workspace { display: flex; flex-grow: 1; height: calc(100vh - 50px); }
+
+        #sidebar {
+            width: 350px; background-color: var(--sidebar-bg);
+            border-right: 1px solid #ddd; display: flex; flex-direction: column;
+            padding: 10px; overflow-y: auto;
+        }
+
+        .cell {
+            background: #fff; border: 1px solid #e0e0e0; border-radius: 4px;
+            margin-bottom: 10px; padding: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .cell:focus-within { border-left: 4px solid var(--accent-color); }
+
+        .cell-input {
+            width: 100%; border: none; font-family: 'Courier New', monospace;
+            font-size: 15px; outline: none; font-weight: 600; color: #333;
+        }
+
+        .cell-output {
+            margin-top: 5px; font-family: 'Courier New', monospace; font-size: 13px;
+            color: #555; min-height: 10px; white-space: pre-wrap;
+            border-top: 1px dashed #eee; padding-top: 5px;
+        }
+
+        #graph-panel { flex-grow: 1; position: relative; background: white; }
+        #plotly-div { width: 100%; height: 100%; }
     </style>
 </head>
 <body>
 
-    <div id="terminal">
-        <div class="sys-line">Math Engine Connected.</div>
-        <div class="sys-line">Usage:</div>
-        <div class="sys-line">  1. Define: f(x) = x * x</div>
-        <div class="sys-line">  2. Calc:   f(5)</div>
-        <div class="sys-line">  3. Graph:  plot f(x)</div>
+<nav>
+    <div class="nav-title">Parser</div>
+
+    <div class="nav-group">
+        <label>X-Min:</label> <input type="number" id="x-min" value="-10">
+    </div>
+    <div class="nav-group">
+        <label>X-Max:</label> <input type="number" id="x-max" value="10">
+    </div>
+    <div class="nav-group">
+        <label>Step:</label> <input type="number" id="x-step" value="0.1" step="0.1">
     </div>
 
-    <div class="input-row">
-        <input type="text" id="cmd" placeholder="Enter command..." autocomplete="off">
-        <button onclick="handleInput()">Run</button>
+    <label class="checkbox-wrapper">
+        <input type="checkbox" id="toggle-points" onchange="updatePointStyle()" checked>
+        <span>Show Points</span>
+    </label>
+
+    <div style="flex-grow: 1;"></div> <button class="btn btn-warn" onclick="clearGraph()">Clear Graph</button>
+    <button class="btn btn-danger" onclick="resetMemory()">Reset Memory</button>
+</nav>
+
+<div id="workspace">
+    <div id="sidebar">
+        <div style="margin-bottom: 10px; font-weight:bold; color:#888; font-size:12px; text-transform:uppercase;">History</div>
+        <div id="cell-container"></div>
     </div>
+    <div id="graph-panel">
+        <div id="plotly-div"></div>
+    </div>
+</div>
+<script>
+    const cellContainer = document.getElementById('cell-container');
+    let cellCount = 0;
 
-    <script>
-        const term = document.getElementById('terminal');
-        const cmdInput = document.getElementById('cmd');
+    // Init
+    addCell();
+    initGraph();
 
-        cmdInput.addEventListener("keypress", (e) => { if(e.key==="Enter") handleInput(); });
+    // --- HELPER: Settings ---
+    function getGraphSettings() {
+        const getVal = (id, def) => {
+            const raw = document.getElementById(id).value;
+            const val = parseFloat(raw);
+            return (raw === "" || isNaN(val)) ? def : val;
+        };
+        return {
+            start: getVal('x-min', -10),
+            end:   getVal('x-max', 10),
+            step:  getVal('x-step', 0.1)
+        };
+    }
 
-        async function handleInput() {
-            const raw = cmdInput.value.trim();
-            if (!raw) return;
-            
-            log(raw, "user-line");
-            cmdInput.value = "";
+    // --- CELL UI ---
+    function addCell() {
+        cellCount++;
+        const div = document.createElement('div');
+        div.className = 'cell';
+        div.id = 'cell-' + cellCount;
+        div.dataset.id = cellCount;
 
-            // --- CLIENT-SIDE LOGIC FOR "PLOT" ---
-            if (raw.startsWith("plot ")) {
-                await handlePlotCommand(raw.substring(5)); // Send content after "plot "
-                return;
-            }
+        div.innerHTML = `
+                <div style="display:flex; justify-content:space-between; color:#aaa; font-size:10px; margin-bottom:2px;">
+                    <span>[${cellCount}]</span>
+                    <span class="status-indicator" id="status-${cellCount}"></span>
+                </div>
+                <input type="text" class="cell-input" placeholder="Enter math..." onkeydown="handleEnter(event, ${cellCount})">
+                <div class="cell-output" id="out-${cellCount}"></div>
+            `;
+        cellContainer.appendChild(div);
 
-            // --- STANDARD LOGIC FOR EVERYTHING ELSE ---
-            await sendToCpp(raw);
-        }
+        setTimeout(() => div.querySelector('input').focus(), 10);
+        document.getElementById('sidebar').scrollTop = document.getElementById('sidebar').scrollHeight;
+    }
 
-        // Calls C++ to just run the code
-        async function sendToCpp(code) {
-            try {
-                const res = await fetch('/api/calculate', {
-                    method: 'POST',
-                    body: JSON.stringify({ code: code })
-                });
-                const data = await res.json();
-                if (data.result && data.result.trim() !== "") {
-                    log(data.result, "sys-line");
-                }
-                return data.result;
-            } catch (e) {
-                log("Connection Error", "error");
-                return "";
-            }
-        }
+    // --- RIPPLE LOGIC ---
+    async function handleEnter(e, id) {
+        if (e.key === "Enter") {
+            e.preventDefault();
 
-        // The "Smart" Frontend Graphing Logic
-        async function handlePlotCommand(expression) {
-            log("Calculating graph data...", "sys-line");
+            await runCell(id);
 
-            // 1. Generate X values
-            const xValues = [];
-            const start = -10, end = 10, step = 0.5;
-            
-            // 2. Construct a BATCH script for C++
-            // We want to verify what "f(x)" is for every X.
-            // We assume the expression is a function call like "f(x)" or a formula "x*x"
-            // We will inject the variable 'x' before every calculation.
-            
-            let batchCode = "";
-            for (let x = start; x <= end; x += step) {
-                // To support "plot x^2", we first set x, then run the expression
-                batchCode += `x = ${x.toFixed(2)}\n`; 
-                batchCode += `${expression}\n`; 
-            }
-
-            // 3. Send the HUGE batch to C++
-            const rawOutput = await sendToCpp(batchCode);
-            
-            // 4. Parse the HUGE output to find Y values
-            // The output will look like: "x = -10 \n 100 \n x = -9.9 \n 98.01 ..."
-            const lines = rawOutput.split('\n');
-            const yValues = [];
-            
-            for(let line of lines) {
-                line = line.trim();
-                // We only care about pure numbers (the results), not the "x = ..." assignments
-                if (line && !line.includes("=") && !line.includes("Defined")) {
-                    const val = parseFloat(line);
-                    if (!isNaN(val)) {
-                        yValues.push(val);
-                        xValues.push((start + (step * yValues.length - step))); // Sync X with found Y
+            // Ripple: Run subsequent cells
+            if (id < cellCount) {
+                for (let nextId = id + 1; nextId <= cellCount; nextId++) {
+                    if (document.getElementById('cell-' + nextId)) {
+                        await runCell(nextId);
                     }
                 }
+            } else {
+                addCell();
+            }
+        }
+    }
+
+    async function runCell(id) {
+        const cell = document.getElementById('cell-' + id);
+        if (!cell) return;
+
+        const input = cell.querySelector('input');
+        const outputDiv = document.getElementById('out-' + id);
+        const statusSpan = document.getElementById('status-' + id);
+        const code = input.value.trim();
+
+        if (!code) {
+            outputDiv.textContent = "";
+            return;
+        }
+
+        statusSpan.textContent = "Running...";
+        statusSpan.style.color = "orange";
+        cell.style.borderLeftColor = "orange";
+
+        try {
+            if (code.startsWith("plot ")) {
+                outputDiv.textContent = "Updating graph...";
+                await handlePlot(code.substring(5));
+                outputDiv.textContent = "Graph Updated.";
+            } else {
+                const result = await sendToCpp(code);
+                outputDiv.textContent = result.trim();
             }
 
-            // 5. Draw
-            drawGraph(xValues, yValues, expression);
+            statusSpan.textContent = "Done";
+            statusSpan.style.color = "green";
+            cell.style.borderLeftColor = "#007acc";
+
+            setTimeout(() => {
+                if(statusSpan.textContent === "Done") statusSpan.textContent = "";
+            }, 1000);
+
+        } catch (err) {
+            statusSpan.textContent = "Error";
+            statusSpan.style.color = "red";
+            cell.style.borderLeftColor = "red";
         }
+    }
 
-        function drawGraph(xArr, yArr, title) {
-            const div = document.createElement('div');
-            div.className = 'graph-div';
-            term.appendChild(div);
-
-            Plotly.newPlot(div, [{
-                x: xArr,
-                y: yArr,
-                type: 'scatter',
-                mode: 'lines+markers',
-                line: {shape: 'spline', color: '#569cd6'}
-            }], {
-                title: title,
-                margin: { t: 40, b: 40, l: 40, r: 20 },
-                paper_bgcolor: '#fff',
-                plot_bgcolor: '#fff'
+    // --- BACKEND API ---
+    async function sendToCpp(code) {
+        try {
+            const res = await fetch('/api/calculate', {
+                method: 'POST',
+                body: JSON.stringify({ code: code })
             });
-            term.scrollTop = term.scrollHeight;
+            const data = await res.json();
+            return data.result || "";
+        } catch (e) { return "Error connecting to backend."; }
+    }
+
+    async function resetMemory() {
+        await fetch('/api/reset', { method: 'POST' });
+        clearGraph();
+        location.reload();
+    }
+
+    async function handlePlot(expression) {
+        const settings = getGraphSettings();
+        let batchCode = "";
+
+        // 1. Generate Batch Code with SUBSTITUTION
+        for (let x = settings.start; x <= settings.end + (settings.step/10000); x += settings.step) {
+            batchCode += `x = ${x}\n${expression}\n`;
+        }
+        const rawOutput = await sendToCpp(batchCode);
+        const lines = rawOutput.split('\n');
+
+        const xVals = [];
+        const yVals = [];
+        let currentX = null;
+        let currentY = null;
+
+        const commitPoint = () => {
+            if (currentX !== null) {
+                xVals.push(currentX);
+                yVals.push(currentY);
+            }
+        };
+
+        for(let line of lines) {
+            line = line.trim();
+            if (!line) continue;
+
+            // Regex for "x = -3.9" or scientific notation
+            if (line.startsWith("x =")) {
+                commitPoint();
+                const match = line.match(/x\s*=\s*([-+]?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?)/);
+                currentX = match ? parseFloat(match[1]) : null;
+                currentY = null;
+            } else {
+                if (line.includes("Defined") || line.includes("Expanding") || line.includes("-->")) continue;
+                const val = parseFloat(line);
+                if (!isNaN(val)) currentY = val;
+            }
+        }
+        commitPoint();
+
+        addTrace(xVals, yVals, expression);
+        await sendToCpp("clear x");
+    }
+    function initGraph() {
+        Plotly.newPlot('plotly-div', [], {
+            margin: { t: 40, r: 40, b: 40, l: 40 },
+            xaxis: { title: 'x', zeroline: true, showgrid: true },
+            yaxis: { title: 'f(x)', zeroline: true, showgrid: true },
+            showlegend: true,
+            // CRITICAL: This tells Plotly to preserve user interactions (Zoom/Pan)
+            uirevision: 'true'
+        });
+    }
+
+    function addTrace(x, y, name) {
+        const showPoints = document.getElementById('toggle-points').checked;
+        const graphDiv = document.getElementById('plotly-div');
+
+        // Check if trace exists
+        let existingIndex = -1;
+        if (graphDiv.data) {
+            existingIndex = graphDiv.data.findIndex(trace => trace.name === name);
         }
 
-        function log(txt, cls) {
-            const d = document.createElement('div');
-            d.textContent = txt;
-            d.className = cls;
-            term.appendChild(d);
-            term.scrollTop = term.scrollHeight;
+        if (existingIndex !== -1) {
+            // UPDATE (Restyle) existing trace -> No flickering, no index bugs
+            Plotly.restyle('plotly-div', {
+                x: [x],
+                y: [y],
+                mode: showPoints ? 'lines+markers' : 'lines'
+            }, [existingIndex]);
+        } else {
+            // ADD new trace
+            const trace = {
+                x: x, y: y,
+                mode: showPoints ? 'lines+markers' : 'lines',
+                name: name,
+                connectgaps: false,
+                line: { width: 3 }
+            };
+            Plotly.addTraces('plotly-div', trace);
         }
-    </script>
+    }
+
+    function updatePointStyle() {
+        const showPoints = document.getElementById('toggle-points').checked;
+        Plotly.restyle('plotly-div', {
+            mode: showPoints ? 'lines+markers' : 'lines'
+        });
+    }
+
+    function clearGraph() {
+        // We use newPlot to wipe, but keep uirevision so next plot respects zoom
+        Plotly.newPlot('plotly-div', [], {
+            margin: { t: 40, r: 40, b: 40, l: 40 },
+            xaxis: { title: 'x' },
+            yaxis: { title: 'f(x)' },
+            uirevision: 'true'
+        });
+    }
+</script>
 </body>
 </html>

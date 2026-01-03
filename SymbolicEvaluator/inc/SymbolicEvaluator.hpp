@@ -12,7 +12,7 @@
 class SymbolicEvaluator {
 public:
     std::shared_ptr<Node> expand(const std::shared_ptr<Node>& node);
-
+    void clearVariable(const std::string& name);
     void registerFunction(const std::shared_ptr<Node>& funcDefNode);
     void registerVariable(std::pair<std::string, double> var);
 

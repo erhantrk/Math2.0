@@ -318,6 +318,7 @@ std::shared_ptr<Node> Simplifier::constantFoldNode(std::shared_ptr<Node> node) {
     if (allChildrenAreNumbers) {
         try {
             const std::string& op = node->value;
+            // Operators
             if (op == "+" && node->children.size() == 2) {
                 return Node::createNode(getValue(node->children[0]) + getValue(node->children[1]));
             }
@@ -341,6 +342,17 @@ std::shared_ptr<Node> Simplifier::constantFoldNode(std::shared_ptr<Node> node) {
             if (op == "!" && node->children.size() == 1) {
                 return Node::createNode(factorial(getValue(node->children[0])));
             }
+
+            // Functions
+            if (op == "sin" && node->children.size() == 1) return Node::createNode(std::sin(getValue(node->children[0])));
+            if (op == "cos" && node->children.size() == 1) return Node::createNode(std::cos(getValue(node->children[0])));
+            if (op == "tan" && node->children.size() == 1) return Node::createNode(std::tan(getValue(node->children[0])));
+            if (op == "sqrt" && node->children.size() == 1) return Node::createNode(std::sqrt(getValue(node->children[0])));
+            if (op == "log" && node->children.size() == 1) return Node::createNode(std::log10(getValue(node->children[0])));
+            if (op == "ln" && node->children.size() == 1) return Node::createNode(std::log(getValue(node->children[0])));
+            if (op == "abs" && node->children.size() == 1) return Node::createNode(std::abs(getValue(node->children[0])));
+            if (op == "atan2" && node->children.size() == 2) return Node::createNode(std::atan2(getValue(node->children[0]), getValue(node->children[1])));
+
         } catch (const std::exception& _) {
             return node;
         }
@@ -419,7 +431,7 @@ std::shared_ptr<Node> Simplifier::simplifyNode(std::shared_ptr<Node> node) { // 
         child = simplifyNode(child);
     }
 
-    if (node->type != Node::Type::Operand) {
+    if (node->type != Node::Type::Operand && node->type != Node::Type::Function) {
         return node;
     }
 

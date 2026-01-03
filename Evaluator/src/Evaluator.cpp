@@ -7,6 +7,11 @@
 #include <string>
 #include "../../Util/inc/ASTUtil.hpp"
 
+template <typename K, typename V>
+static bool contains(const std::unordered_map<K, V>& map, const K& key) {
+    return map.find(key) != map.end();
+}
+
 double Evaluator::evaluate(const std::shared_ptr<Node>& node) {
     error.clear();
     callStack.clear();
@@ -37,7 +42,7 @@ double Evaluator::evaluateNode(const std::shared_ptr<Node>& node) { // NOLINT(*-
         case Node::Type::Variable: {
             if (node->value == "pi") return M_PI;
             if (node->value == "e") return M_E;
-            if (!variables.contains(node->value)) {
+            if (!contains(variables, node->value)) {
                 throw std::runtime_error("Undefined variable: '" + node->value + "'");
             }
             return variables.at(node->value);
@@ -132,3 +137,9 @@ double Evaluator::evaluateNode(const std::shared_ptr<Node>& node) { // NOLINT(*-
     }
 }
 
+void Evaluator::clearVariable(const std::string& name) {
+    auto it = variables.find(name);
+    if (it != variables.end()) {
+        variables.erase(it);
+    }
+}

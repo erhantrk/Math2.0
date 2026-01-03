@@ -5,133 +5,131 @@
 #include <fstream>
 #include <sstream>
 
+#include "crow_all.h" // Ensure this is in your folder
+
 #include "Lexer/inc/Lexer.hpp"
 #include "Parser/inc/Parser.hpp"
 #include "Evaluator/inc/Evaluator.hpp"
 #include "SymbolicEvaluator/inc/SymbolicEvaluator.hpp"
 #include "Util/inc/ASTPrint.hpp"
 
-const std::string RESET = "\033[0m";
-const std::string RED = "\033[31m";
+// We modify processInput to write to a stringstream instead of cout
+void processInput(const std::string& input, Parser& parser, Evaluator& evaluator, SymbolicEvaluator& sEvaluator, std::stringstream& out) {
+    if (input.empty()) return;
 
-int getParenBalance(const std::string& s) {
-    int balance = 0;
-    for (char c : s) {
-        if (c == '(') balance++;
-        else if (c == ')') balance--;
-    }
-    return balance;
-}
+    // --- NEW: Handle "clear x" ---
+    if (input.substr(0, 6) == "clear ") {
+        std::string varName = input.substr(6);
+        // Trim whitespace
+        varName.erase(0, varName.find_first_not_of(" \n\r\t"));
+        varName.erase(varName.find_last_not_of(" \n\r\t") + 1);
 
-void processInput(const std::string& input, Parser& parser, Evaluator& evaluator, SymbolicEvaluator& sEvaluator) {
-    if (input.empty()) {
+        evaluator.clearVariable(varName);
+        sEvaluator.clearVariable(varName);
+        out << "Variable '" << varName << "' cleared.\n";
         return;
     }
 
     Lexer lexer(input);
     if (!lexer.getError().empty()) {
-        std::cout << RED << "Lexer Error: " << lexer.getError() << RESET << '\n';
+        out << "Error: " << lexer.getError() << "\n";
         return;
     }
 
     auto ast = parser.parse(lexer);
     if (!parser.getError().empty()) {
-        std::cout << RED << "Parser Error: " << parser.getError() << RESET << '\n';
+        out << "Error: " << parser.getError() << "\n";
         parser.clearError();
         return;
     }
 
     for (const auto& node : ast) {
+        // --- CASE 1: DEFINITIONS (f(x) = ...) ---
         if (node->type == Node::Type::FunctionAssignment) {
-            evaluator.evaluate(node);
-            sEvaluator.registerFunction(node);
-            std::cout << "Defined: " << toHumanReadable(node) << '\n';
+            // 1. Expand symbolicly (resolve d/dx, simplify)
+            auto expandedNode = sEvaluator.expand(node);
+
+            // 2. Register Symbolic
+            sEvaluator.registerFunction(expandedNode);
+
+            // 3. Register Numeric (So we can plot it)
+            evaluator.evaluate(expandedNode);
+
+            out << "Defined: " << toHumanReadable(expandedNode) << "\n";
             continue;
         }
 
-        double val = evaluator.evaluate(node);
+        // --- CASE 2: EXPRESSIONS (d/dx(x), 5+5, etc.) ---
+
+        // STEP 1: Always Expand First!
+        // This converts "d/dx(x)" -> "1" BEFORE we try to calculate it.
+        auto expandedNode = sEvaluator.expand(node);
+
+        // STEP 2: Try Numeric Evaluation on the expanded result
+        double val = evaluator.evaluate(expandedNode);
         std::string evalError = evaluator.getError();
 
         if (evalError.empty()) {
-            std::cout << toHumanReadable(node) << " = " << val << '\n';
-            if (node->type == Node::Type::Assignment) {
-                sEvaluator.registerVariable(std::make_pair(node->value, val));
-            }
-        } else {
-            if (node->type == Node::Type::Function) {
-                std::cout << "Expanding: " << toHumanReadable(node) << '\n';
-            }
-            auto expandedNode = sEvaluator.expand(node);
-            std::cout << "--> " << toHumanReadable(expandedNode) << '\n';
-        }
-    }
-}
-
-void processFile(const std::string& filePath, Parser& parser, Evaluator& evaluator, SymbolicEvaluator& sEvaluator) {
-    std::ifstream file(filePath);
-    if (!file.is_open()) {
-        std::cout << RED << "Error: Could not open file '" << filePath << "'" << RESET << '\n';
-        return;
-    }
-    std::stringstream buffer;
-    buffer << file.rdbuf();
-    processInput(buffer.str(), parser, evaluator, sEvaluator);
-    std::cout.flush();
-}
-
-void runRepl(Parser& parser, Evaluator& evaluator, SymbolicEvaluator& sEvaluator) {
-    std::cout << "Math2.0 REPL Mode. Type 'exit' to quit." << std::endl;
-    std::cout << "Input will auto-continue if parentheses are open." << std::endl;
-
-    std::string line;
-    std::string multiLineInput;
-    int parenBalance = 0;
-
-    while (true) {
-        if (parenBalance == 0) {
-            std::cout << ">> " << std::flush;
-            multiLineInput.clear();
-        } else {
-            std::cout << ".. " << std::flush;
-        }
-
-        if (!std::getline(std::cin, line)) {
-            break;
-        }
-
-        if (line == "exit") {
-            if (parenBalance != 0) {
-                std::cout << RED << "Input canceled." << RESET << std::endl;
-                parenBalance = 0;
+            // Success: It's a number (e.g., 1, 10, 0.5)
+            if (node->type != Node::Type::Assignment) {
+                 out << val << "\n";
             } else {
-                break;
+                 // Variable Assignment: x = 5
+                 out << toHumanReadable(expandedNode) << " = " << val << "\n";
             }
-            continue;
-        }
-
-        multiLineInput += line + "\n";
-        parenBalance = getParenBalance(multiLineInput);
-
-        if (parenBalance <= 0) {
-            processInput(multiLineInput, parser, evaluator, sEvaluator);
-            std::cout.flush();
-            parenBalance = 0;
+        } else {
+            // Failure: It's likely purely symbolic (e.g., "x + y" where y is unknown)
+            // We just print the expanded symbolic form.
+            out << "--> " << toHumanReadable(expandedNode) << "\n";
         }
     }
 }
-
-
 int main(int argc, char* argv[]) {
+    // Persistent State
     Parser parser;
     Evaluator evaluator;
     SymbolicEvaluator sEvaluator;
 
-    if (argc == 1) {
-        runRepl(parser, evaluator, sEvaluator);
-    } else {
-        std::string arg = argv[1];
-        processFile(arg, parser, evaluator, sEvaluator);
-    }
+    crow::SimpleApp app;
+
+    // 1. Serve the HTML Interface
+    CROW_ROUTE(app, "/")([](){
+        std::ifstream file("index.html");
+        if(file.is_open()) {
+            std::stringstream buffer;
+            buffer << file.rdbuf();
+            return crow::response(buffer.str());
+        }
+        return crow::response(500, "Could not load index.html");
+    });
+
+    // 2. The Execution Endpoint
+    // It accepts raw text, runs it, and returns the text result.
+    CROW_ROUTE(app, "/api/calculate").methods("POST"_method)
+    ([&](const crow::request& req){
+        auto x = crow::json::load(req.body);
+        if (!x) return crow::response(400, "Invalid JSON");
+
+        std::string code = x["code"].s();
+        std::stringstream outputBuffer;
+
+        processInput(code, parser, evaluator, sEvaluator, outputBuffer);
+
+        crow::json::wvalue resp;
+        resp["result"] = outputBuffer.str();
+        return crow::response(resp);
+    });
+
+    // 3. Reset Memory
+    CROW_ROUTE(app, "/api/reset").methods("POST"_method)
+    ([&](){
+        evaluator = Evaluator();
+        sEvaluator = SymbolicEvaluator();
+        return crow::response("Memory Cleared");
+    });
+
+    std::cout << "Math Engine running on port 8080..." << std::endl;
+    app.port(8080).multithreaded().run();
 
     return 0;
 }

@@ -14,6 +14,13 @@ void SymbolicEvaluator::registerFunction(const std::shared_ptr<Node>& funcDefNod
     }
 }
 
+void SymbolicEvaluator::clearVariable(const std::string& name) {
+    auto it = variables.find(name);
+    if (it != variables.end()) {
+        variables.erase(it);
+    }
+}
+
 void SymbolicEvaluator::registerVariable(std::pair<std::string, double> var) {
     variables.emplace(var);
 }

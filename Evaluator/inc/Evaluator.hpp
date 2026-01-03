@@ -12,6 +12,7 @@
 class Evaluator {
 public:
     double evaluate(const std::shared_ptr<Node>& node);
+    void clearVariable(const std::string& name);
     [[nodiscard]] std::string getError() const;
 
 private:
